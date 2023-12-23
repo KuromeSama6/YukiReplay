@@ -1,0 +1,13 @@
+name: YukiReplay
+main: moe.protasis.replay.YukiReplay
+version: 1.0
+author: KuromeSama6
+
+depend:
+  - coreutils
+
+commands:
+  replaydebug:
+    usage: replaydebug
+    description: replay debug command
+    permission: replay.debug
