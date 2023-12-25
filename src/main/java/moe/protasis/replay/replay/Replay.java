@@ -113,6 +113,7 @@ public class Replay implements Listener {
     private void OnPlayerMove(PlayerMoveEvent e) {
         if (!EnsureThis(e)) return;
         actions.add(new PlayerMoveAction(this, e));
+        actions.add(new PlayerHeadRotAction(this, e.getPlayer()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

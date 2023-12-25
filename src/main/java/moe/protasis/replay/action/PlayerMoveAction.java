@@ -6,8 +6,7 @@ import com.google.gson.JsonObject;
 import moe.protasis.replay.playback.Playback;
 import moe.protasis.replay.replay.Replay;
 import moe.protasis.replay.util.PacketUtil;
-import net.minecraft.server.v1_8_R3.PacketPlayOutNamedEntitySpawn;
-import oracle.net.ns.Packet;
+import net.minecraft.server.v1_8_R3.PacketPlayOutEntity;
 import org.bukkit.Location;
 import org.bukkit.event.player.PlayerMoveEvent;
 
@@ -61,26 +60,14 @@ public class PlayerMoveAction extends Action {
         }
 
         {
-            // head yaw
-            PacketContainer packet = new PacketContainer(PacketType.Play.Server.ENTITY_HEAD_ROTATION);
-            packet.getIntegers()
-                    .write(0, eid);
-
-            packet.getBytes()
-                    .write(0, (byte) PacketUtil.GetCompressedAngle(yaw));
-
-            playback.SendPacket(packet);
-        }
-
-        {
             // head pitch
             PacketContainer packet = new PacketContainer(PacketType.Play.Server.ENTITY_LOOK);
             packet.getIntegers()
                     .write(0, eid);
 
             packet.getBytes()
-                    .write(0, (byte) PacketUtil.GetCompressedAngle(yaw))
-                    .write(1, (byte) PacketUtil.GetCompressedAngle(pitch));
+                    .write(0, (byte) PacketUtil.CompressAngle(yaw))
+                    .write(1, (byte) PacketUtil.CompressAngle(pitch));
 
             playback.SendPacket(packet);
         }
