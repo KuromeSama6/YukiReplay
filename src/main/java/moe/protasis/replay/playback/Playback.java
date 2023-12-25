@@ -33,6 +33,7 @@ public class Playback {
     @Getter
     private final Map<UUID, PlayerNPC> representers = new HashMap<>();
     private final Map<Integer, List<Action>> actions = new HashMap<>();
+    private final List<Action> allActions = new ArrayList<>();
     @Getter
     private final List<Player> viewers = new ArrayList<>();
     @Getter
@@ -65,6 +66,8 @@ public class Playback {
                 if (!actions.containsKey(frame)) actions.put(frame, new ArrayList<>());
                 actions.get(frame).add(action);
 
+                allActions.add(action);
+
             } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException |
                      InvocationTargetException ex) {
                 YukiReplay.getInstance().getLogger().severe(String.format("A bad frame is encountered during replay parsing at frame %s", frame));
@@ -82,6 +85,7 @@ public class Playback {
             return;
         }
 
+        frame = allActions.get(0).getFrame();
         scheduler.AddRepeating(this::Tick, 0, 1);
     }
 
@@ -140,11 +144,12 @@ public class Playback {
         }
     }
 
-
     public static Playback LoadFromDirectory(String name, World world) throws IOException {
         File file = new File(YukiReplay.getInstance().getDataFolder() + "/replays/" + name + ".repl");
-        if (!file.exists()) return null;
+        return LoadFromFile(file, world);
+    }
 
+    public static Playback LoadFromFile(File file, World world) throws IOException {
         byte[] data = Files.readAllBytes(file.toPath());
         return new Playback(world, new Gson().fromJson(CompressionUtil.DecompressToString(data), JsonObject.class));
     }

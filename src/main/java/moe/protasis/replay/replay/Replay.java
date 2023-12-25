@@ -30,6 +30,7 @@ import org.joda.time.DateTime;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.List;
@@ -98,7 +99,9 @@ public class Replay implements Listener {
     public void Save(String name) throws IOException {
         File dir = new File(YukiReplay.getInstance().getDataFolder() + "/replays");
         dir.mkdirs();
-        File file = new File(dir + String.format("/%s.repl", name));
+        Save(new File(dir + String.format("/%s.repl", name)));
+    }
+    public void Save(File file) throws IOException{
         try (FileOutputStream stream = new FileOutputStream(file)) {
             stream.write(SaveToBytes());
         }
