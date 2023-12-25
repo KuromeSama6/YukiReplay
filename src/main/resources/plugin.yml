@@ -5,6 +5,7 @@ author: KuromeSama6
 
 depend:
   - coreutils
+  - NPCLibPlugin
 
 commands:
   replaydebug:

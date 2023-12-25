@@ -3,9 +3,15 @@ package moe.protasis.replay.command;
 import lombok.Getter;
 import moe.icegame.coreutils.classes.LintedCommand;
 import moe.icegame.coreutils.classes.PlayerCommandListener;
+import moe.protasis.replay.YukiReplay;
+import moe.protasis.replay.packetwrapper.WrapperPlayServerNamedEntitySpawn;
 import moe.protasis.replay.playback.Playback;
 import moe.protasis.replay.replay.Replay;
+import net.jitse.npclib.api.NPC;
+import net.minecraft.server.v1_8_R3.EntityTracker;
+import net.minecraft.server.v1_8_R3.EntityTrackerEntry;
 import org.bukkit.command.CommandSender;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
 import java.io.IOException;
@@ -40,6 +46,7 @@ public class DebugCommand extends PlayerCommandListener.PlayerCommandHandler {
 
         if (cmd.HasParam("-save")) {
             try {
+                debugReplay.setRecording(false);
                 debugReplay.Save("debug");
                 sender.sendMessage(String.format("saved at frame %s", debugReplay.getFrame()));
 
@@ -56,13 +63,25 @@ public class DebugCommand extends PlayerCommandListener.PlayerCommandHandler {
         }
 
         if (cmd.HasParam("-play")) {
+            if (debugPlayback != null) debugPlayback.Close();
+
             try {
-                debugPlayback = Playback.LoadFromDirectory("debug");
+                debugPlayback = Playback.LoadFromDirectory("debug", player.getWorld());
+                debugPlayback.AddViewer(player);
+                debugPlayback.setPlaying(true);
+                sender.sendMessage("playing");
             } catch (IOException e) {
                 sender.sendMessage("§cIOException");
                 e.printStackTrace();
             }
 
+        }
+
+        if (cmd.HasParam("-spawn")) {
+            NPC npc = YukiReplay.getNpcLib().createNPC();
+            npc.setLocation(player.getLocation());
+            npc.create();
+            npc.show(player);
         }
 
     }
