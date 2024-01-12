@@ -9,9 +9,7 @@ import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Represents a NPC that is representing a player during a playback.
@@ -20,6 +18,7 @@ public class PlayerNPC {
     @Getter private final UUID uuid;
     @Getter private NPC npc;
     @Getter private int entityId;
+    @Getter private List<String> text = new ArrayList<>();
 
     public PlayerNPC(UUID uuid, Location location) {
         this.uuid = uuid;
@@ -45,6 +44,11 @@ public class PlayerNPC {
         ret.create();
 
         return ret;
+    }
+
+    public void SetText(String... text) {
+        this.text = Arrays.asList(text);
+        npc.setText(this.text);
     }
 
     public void Destroy() {

@@ -3,18 +3,18 @@ package moe.protasis.replay.action;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.google.gson.JsonObject;
+import moe.protasis.replay.npc.PlayerNPC;
 import moe.protasis.replay.playback.Playback;
 import moe.protasis.replay.replay.Replay;
 import moe.protasis.replay.util.PacketUtil;
-import net.minecraft.server.v1_8_R3.PacketPlayOutEntity;
 import org.bukkit.Location;
 import org.bukkit.event.player.PlayerMoveEvent;
 
-public class PlayerMoveAction extends Action {
+public class MoveAction extends Action {
     private double x, y, z;
     private float yaw, pitch;
 
-    public PlayerMoveAction(Replay replay, PlayerMoveEvent e) {
+    public MoveAction(Replay replay, PlayerMoveEvent e) {
         super(replay, e.getPlayer());
 
         Location to = e.getTo();
@@ -25,7 +25,7 @@ public class PlayerMoveAction extends Action {
         pitch = to.getPitch();
     }
 
-    public PlayerMoveAction(JsonObject data) {
+    public MoveAction(JsonObject data) {
         super(data);
 
         x = data.get("x").getAsDouble();
@@ -46,7 +46,10 @@ public class PlayerMoveAction extends Action {
 
     @Override
     public void Execute(Playback playback) {
-        int eid = playback.GetRepresenter(this).getEntityId();
+        PlayerNPC npc = playback.GetRepresenter(this);
+        npc.getNpc().setText(npc.getText());
+
+        int eid = npc.getEntityId();
 
         {
             // teleport

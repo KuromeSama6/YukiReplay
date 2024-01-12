@@ -12,8 +12,6 @@ import lombok.Setter;
 import moe.protasis.replay.YukiReplay;
 import moe.protasis.replay.action.*;
 import moe.protasis.replay.util.CompressionUtil;
-import net.minecraft.server.v1_8_R3.PacketPlayInArmAnimation;
-import net.minecraft.server.v1_8_R3.PacketPlayOutAnimation;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -21,18 +19,15 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryInteractEvent;
+import org.bukkit.event.player.*;
 import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.EventObject;
 import java.util.List;
 
 /**
@@ -67,14 +62,14 @@ public class Replay implements Listener {
             @Override
             public void onPacketReceiving(PacketEvent e) {
                 if (!EnsureThis(e)) return;
-                actions.add(new PlayerAnimationAction(Replay.this, e.getPlayer(), 0));
+                actions.add(new AnimationAction(Replay.this, e.getPlayer(), 0));
             }
         });
     }
 
     public void AddPlayer(Player player) {
         players.add(player);
-        actions.add(new PlayerSpawnAction(this, player));
+        actions.add(new SpawnAction(this, player));
     }
 
     public void RemovePlayer(Player player) {
@@ -115,21 +110,21 @@ public class Replay implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void OnPlayerMove(PlayerMoveEvent e) {
         if (!EnsureThis(e)) return;
-        actions.add(new PlayerMoveAction(this, e));
-        actions.add(new PlayerHeadRotAction(this, e.getPlayer()));
+        actions.add(new MoveAction(this, e));
+        actions.add(new HeadRotationAction(this, e.getPlayer()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void OnPlayerQuit(PlayerQuitEvent e) {
         if (!EnsureThis(e)) return;
-        actions.add(new PlayerLeaveAction(this, e.getPlayer()));
+        actions.add(new LeaveAction(this, e.getPlayer()));
         players.remove(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void OnPlayerChangeWorld(PlayerChangedWorldEvent e) {
         if (!EnsureThis(e)) return;
-        actions.add(new PlayerLeaveAction(this, e.getPlayer()));
+        actions.add(new LeaveAction(this, e.getPlayer()));
         players.remove(e.getPlayer());
     }
 
@@ -137,17 +132,46 @@ public class Replay implements Listener {
     private void OnEntityDamage(EntityDamageEvent e) {
         if (!EnsureThis(e)) return;
         Player player = (Player) e.getEntity();
-        actions.add(new PlayerDamageAction(this, player));
+        actions.add(new DamageAction(this, player));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void OnPlayerItemHeld(PlayerItemHeldEvent e) {
+        if (!EnsureThis(e)) return;
+        actions.add(new InventoryUpdateAction(this, e.getPlayer()));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void OnInventoryClick(InventoryInteractEvent e) {
+        if (!(e.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) e.getWhoClicked();
+        if (!EnsureThis(player)) return;
+        actions.add(new InventoryUpdateAction(this, player));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void OnPlayerDropItem(PlayerDropItemEvent e) {
+        if (!EnsureThis(e)) return;
+        actions.add(new InventoryUpdateAction(this, e.getPlayer()));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void OnPlayerPickupItem(PlayerPickupItemEvent e) {
+        if (!EnsureThis(e)) return;
+        actions.add(new InventoryUpdateAction(this, e.getPlayer()));
     }
 
     private boolean EnsureThis(PlayerEvent e) {
-        return recording && players.contains(e.getPlayer());
+        return EnsureThis(e.getPlayer());
     }
     private boolean EnsureThis(EntityEvent e) {
         return recording && e.getEntity() instanceof Player && players.contains((Player) e.getEntity());
     }
     private boolean EnsureThis(PacketEvent e) {
-        return recording && players.contains(e.getPlayer());
+        return EnsureThis(e.getPlayer());
+    }
+    private boolean EnsureThis(Player player) {
+        return recording && players.contains(player);
     }
 
     private void TickFrame() {

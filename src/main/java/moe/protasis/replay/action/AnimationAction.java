@@ -8,16 +8,16 @@ import moe.protasis.replay.playback.Playback;
 import moe.protasis.replay.replay.Replay;
 import org.bukkit.entity.Player;
 
-public class PlayerAnimationAction extends Action{
+public class AnimationAction extends Action{
     @Getter
     private int animation;
 
-    public PlayerAnimationAction(Replay replay, Player player, int animation) {
+    public AnimationAction(Replay replay, Player player, int animation) {
         super(replay, player);
         this.animation = animation;
     }
 
-    public PlayerAnimationAction(JsonObject data) {
+    public AnimationAction(JsonObject data) {
         super(data);
         animation = data.get("animation").getAsInt();
     }

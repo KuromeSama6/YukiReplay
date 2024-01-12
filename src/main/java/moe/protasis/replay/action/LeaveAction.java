@@ -6,12 +6,12 @@ import moe.protasis.replay.playback.Playback;
 import moe.protasis.replay.replay.Replay;
 import org.bukkit.entity.Player;
 
-public class PlayerLeaveAction extends Action {
-    public PlayerLeaveAction(Replay replay, Player player) {
+public class LeaveAction extends Action {
+    public LeaveAction(Replay replay, Player player) {
         super(replay, player);
     }
 
-    public PlayerLeaveAction(JsonObject data) {
+    public LeaveAction(JsonObject data) {
         super(data);
     }
 

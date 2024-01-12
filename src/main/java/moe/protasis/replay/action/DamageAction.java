@@ -7,12 +7,12 @@ import moe.protasis.replay.playback.Playback;
 import moe.protasis.replay.replay.Replay;
 import org.bukkit.entity.Player;
 
-public class PlayerDamageAction extends Action {
-    public PlayerDamageAction(Replay replay, Player player) {
+public class DamageAction extends Action {
+    public DamageAction(Replay replay, Player player) {
         super(replay, player);
     }
 
-    public PlayerDamageAction(JsonObject data) {
+    public DamageAction(JsonObject data) {
         super(data);
     }
 

@@ -7,22 +7,21 @@ import lombok.Getter;
 import moe.protasis.replay.playback.Playback;
 import moe.protasis.replay.replay.Replay;
 import moe.protasis.replay.util.PacketUtil;
-import net.minecraft.server.v1_8_R3.PacketPlayOutEntityHeadRotation;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftLivingEntity;
 import org.bukkit.entity.Player;
 
-public class PlayerHeadRotAction extends Action{
+public class HeadRotationAction extends Action{
     @Getter
     private byte rotation;
 
-    public PlayerHeadRotAction(Replay replay, Player player) {
+    public HeadRotationAction(Replay replay, Player player) {
         super(replay, player);
 
         float rot = ((CraftLivingEntity)player).getHandle().getHeadRotation();
         rotation = (byte) PacketUtil.CompressAngle(rot);
     }
 
-    public PlayerHeadRotAction(JsonObject data) {
+    public HeadRotationAction(JsonObject data) {
         super(data);
         rotation = data.get("rotation").getAsByte();
     }
