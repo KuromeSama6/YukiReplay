@@ -37,10 +37,7 @@ All numbers are big-endian encoded.
 A valid YREP file must start with a header section. The header section contains critical indentifying information about the replay and other optional metadata. A header section contains the following fields in the following order
 
 - Magic (4) - `0d 00 07 21`
-- Version (2) - `short` indicating the version of the YREP format.
-- Length (4) - `int` indicating the length of the body section, in bytes. This is not to be confused with the number of frames in the body section.
-- Total frames (4) - `int` indicating the total number of frames in the body section.
-- Checksum (32) - SHA-256 hash of all the data in the body section.
+- Version (2) - `short` indicating the version of the YREP format
 - Optional metadata length (4) - Length of the following optional metadata section in bytes. If this value is 0, the optional metadata section is not present.
 - Optional metadata(`Optional metadata length`)
   - The optional metadata section is a length-prefixed string that contains additional information about the replay. This is to be set by developers using the YukiReplay API.

@@ -1,0 +1,89 @@
+package moe.ku6.yukireplay.nms.impl;
+
+import com.mojang.authlib.GameProfile;
+import moe.ku6.yukireplay.api.nms.GameProfilePropertyWrapper;
+import moe.ku6.yukireplay.api.nms.IClientPlayer;
+import moe.ku6.yukireplay.api.nms.IGameProfile;
+import net.minecraft.server.v1_8_R3.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
+import org.bukkit.entity.Player;
+
+public class ClientPlayer_v1_8_R3 extends AbstractClientEntity_v1_8_R3 implements IClientPlayer {
+    private final PlayerInteractManager interactManager;
+    private final IGameProfile gameProfile;
+    private final EntityPlayer player;
+
+    public ClientPlayer_v1_8_R3(World world, IGameProfile gameProfile) {
+        super(world);
+        var server = (MinecraftServer)Bukkit.getServer();
+        var nmsWorld = ((CraftWorld)world).getHandle();
+        this.gameProfile = gameProfile;
+        interactManager = new PlayerInteractManager(nmsWorld);
+
+        var profile = new GameProfile(gameProfile.getUuid(), gameProfile.getName());
+
+        player = new EntityPlayer(server, nmsWorld, profile, interactManager);
+    }
+
+    @Override
+    protected void SpawnClientEntity(Player viewer) {
+        var handle = ((CraftPlayer)viewer).getHandle();
+
+        var playerInfo = new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER, player);
+        handle.playerConnection.sendPacket(playerInfo);
+
+        var spawnPacket = new PacketPlayOutNamedEntitySpawn(player);
+        handle.playerConnection.sendPacket(spawnPacket);
+    }
+
+    @Override
+    protected void DespawnClientEntity(Player viewer) {
+        var handle = ((CraftPlayer)viewer).getHandle();
+        var playerInfo = new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, player);
+        handle.playerConnection.sendPacket(playerInfo);
+        var despawnPacket = new PacketPlayOutEntityDestroy(player.getId());
+        handle.playerConnection.sendPacket(despawnPacket);
+    }
+
+    @Override
+    public int GetEntityId() {
+        return player.getId();
+    }
+
+    @Override
+    public Location GetLocation() {
+        return player.getBukkitEntity().getLocation();
+    }
+
+    @Override
+    public void SetLocation(Location location) {
+        player.setLocation(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
+        var teleportPacket = new PacketPlayOutEntityTeleport(player);
+        for (var viewer : viewers) {
+            var handle = ((CraftPlayer)viewer).getHandle();
+            handle.playerConnection.sendPacket(teleportPacket);
+        }
+
+        var headRotationPacket = new PacketPlayOutEntityHeadRotation(player, (byte) ((int) (location.getYaw() * 256.0F / 360.0F)));
+        for (var viewer : viewers) {
+            var handle = ((CraftPlayer)viewer).getHandle();
+            handle.playerConnection.sendPacket(headRotationPacket);
+        }
+    }
+
+    @Override
+    public IGameProfile GetGameProfile() {
+        return gameProfile;
+    }
+
+    @Override
+    public void SetSkin(String value, String signature) {
+        var property = new GameProfilePropertyWrapper("textures", value, signature);
+        gameProfile.SetProperty("textures", property);
+    }
+
+}

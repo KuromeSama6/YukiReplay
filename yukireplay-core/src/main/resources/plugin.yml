@@ -1,0 +1,6 @@
+name: YukiReplay
+version: 0.0.1
+main: moe.ku6.yukireplay.YukiReplay
+author: KuromeSama6
+
+softdepends: [PacketEvents]

@@ -13,6 +13,8 @@ java {
 }
 
 tasks.named("build") {
+    finalizedBy(":yukireplay-api:build")
+    finalizedBy(":yukireplay-nms-v1_8_r3:build")
     finalizedBy(":yukireplay-core:build")
 }
 

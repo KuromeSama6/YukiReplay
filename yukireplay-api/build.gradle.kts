@@ -34,22 +34,24 @@ dependencies {
 
     compileOnly("com.github.retrooper:packetevents-spigot:2.7.0")
     compileOnly("com.comphenix.protocol:ProtocolLib:4.7.0")
-
-
-    implementation(project(":yukireplay-api"))
-    implementation(project(":yukireplay-nms-v1_8_r3"))
 }
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
 }
 
-tasks {
-    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
-        archiveClassifier.set("")
-    }
+tasks.named("build") {
+    finalizedBy("publishToMavenLocal")
+}
 
-    build {
-        dependsOn(shadowJar)
+publishing {
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+
+            groupId = project.group.toString()
+            artifactId = project.name
+            version = project.version.toString()
+        }
     }
 }

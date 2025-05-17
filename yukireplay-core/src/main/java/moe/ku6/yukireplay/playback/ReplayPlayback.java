@@ -1,4 +1,201 @@
 package moe.ku6.yukireplay.playback;
 
-public class ReplayPlayback {
+import lombok.Getter;
+import moe.ku6.yukireplay.YukiReplay;
+import moe.ku6.yukireplay.api.codec.Instruction;
+import moe.ku6.yukireplay.api.codec.InstructionType;
+import moe.ku6.yukireplay.api.exception.InvalidMagicException;
+import moe.ku6.yukireplay.api.exception.PlaybackLoadException;
+import moe.ku6.yukireplay.api.exception.VersionMismatchException;
+import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
+import moe.ku6.yukireplay.api.util.Magic;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.entity.Player;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+public class ReplayPlayback implements IPlayback, Listener {
+    @Getter
+    private final World world;
+    @Getter
+    private final byte[] metadata;
+    private final List<List<Instruction>> frames = new ArrayList<>();
+    private final List<Integer> schedulerHandles = new ArrayList<>();
+    private final Set<Player> viewers = new HashSet<>();
+    private final Map<Integer, TrackedPlaybackPlayer> trackedPlayers = new HashMap<>();
+    private int playhead = 0;
+    private boolean closed;
+    private boolean playing;
+
+    public ReplayPlayback(World world, byte[] data) throws PlaybackLoadException {
+        this.world = world;
+
+        // parse data
+        var buf = ByteBuffer.wrap(data);
+        buf.order(ByteOrder.BIG_ENDIAN);
+
+        {
+            var magic = new byte[4];
+            buf.get(magic);
+            if (!Arrays.equals(magic, Magic.FORMAT_MAGIC))
+                throw new InvalidMagicException();
+        }
+
+        {
+            var version = buf.getShort();
+            if (version > Magic.FORMAT_VERSION)
+                throw new VersionMismatchException(version, Magic.FORMAT_VERSION);
+        }
+
+        {
+            var metadataSize = buf.getInt();
+            metadata = new byte[metadataSize];
+            buf.get(metadata);
+        }
+
+        // end of header
+        // start of data
+        int frameNumber = 1;
+
+        while (buf.hasRemaining()) {
+            int frame = buf.getInt();
+            if (frame != frameNumber)
+                throw new PlaybackLoadException("Frame number mismatch, got %d, expected %d".formatted(frame, frameNumber));
+
+            int instructionCount = buf.getShort();
+            List<Instruction> instructions = new ArrayList<>(instructionCount);
+            for (int i = 0; i < instructionCount; i++) {
+                var id = buf.getShort();
+                var type = InstructionType.ById(id);
+                if (type == null)
+                    throw new PlaybackLoadException("Unknown instruction type %d".formatted(id));
+
+                int payloadLength = buf.getInt();
+                var payload = buf.slice(buf.position(), payloadLength);
+                buf.position(buf.position() + payloadLength);
+
+                var instruction = type.CreateInstance(payload);
+                instructions.add(instruction);
+
+            }
+
+            ++frameNumber;
+        }
+
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(YukiReplay.getInstance(), this::Update, 0, 1);
+        Bukkit.getPluginManager().registerEvents(this, YukiReplay.getInstance());
+    }
+
+    @Override
+    public void AddViewers(Player... players) {
+        EnsureValid();
+        viewers.addAll(Arrays.asList(players));
+
+        for (var player : players) {
+            for (var trackedPlayer : trackedPlayers.values()) {
+                trackedPlayer.SpawnFor(player);
+            }
+        }
+    }
+
+    @Override
+    public void RemoveViewers(Player... players) {
+        EnsureValid();
+        for (var player : players) {
+            viewers.remove(player);
+        }
+
+        for (var player : players) {
+            for (var trackedPlayer : trackedPlayers.values()) {
+                trackedPlayer.DespawnFor(player);
+            }
+        }
+    }
+
+    @Override
+    public IPlaybackPlayer GetTrackedPlayer(int trackerId) {
+        EnsureValid();
+        return trackedPlayers.get(trackerId);
+    }
+
+    @Override
+    public void AddTrackedPlayer(IPlaybackPlayer player) {
+        EnsureValid();
+        if (trackedPlayers.containsKey(player.GetTrackerId())) {
+            throw new IllegalStateException("Player with tracker id %d already exists".formatted(player.GetTrackerId()));
+        }
+        trackedPlayers.put(player.GetTrackerId(), (TrackedPlaybackPlayer)player);
+        viewers.forEach(player::SpawnFor);
+    }
+
+    @Override
+    public void RemoveTrackedPlayer(IPlaybackPlayer player) {
+        EnsureValid();
+        trackedPlayers.remove(player.GetTrackerId());
+        player.Remove();
+        viewers.forEach(player::DespawnFor);
+    }
+
+    @Override
+    public boolean IsPlaying() {
+        return !closed && playing;
+    }
+
+    @Override
+    public void SetPlaying(boolean playing) {
+        EnsureValid();
+        if (this.playing == playing) return;
+        this.playing = playing;
+    }
+
+    @Override
+    public int GetPlayhead() {
+        return playhead;
+    }
+
+    @Override
+    public int GetTotalFrames() {
+        return frames.size();
+    }
+
+    @Override
+    public void StepPlayback() {
+        EnsureValid();
+        if (playhead > frames.size()) return;
+        ++playhead;
+
+        for (var instruction : frames.get(playhead - 1)) {
+            instruction.Apply(this);
+        }
+    }
+
+    private void Update() {
+        if (!playing) return;
+    }
+
+    @Override
+    public String GetMetadataAsString() {
+        return new String(metadata, StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public void Close() {
+        if (closed) return;
+        closed = true;
+        schedulerHandles.forEach(c -> Bukkit.getScheduler().cancelTask(c));
+        schedulerHandles.clear();
+        HandlerList.unregisterAll(this);
+    }
+
+    private void EnsureValid() {
+        if (closed)
+            throw new IllegalStateException("Playback is closed");
+    }
 }

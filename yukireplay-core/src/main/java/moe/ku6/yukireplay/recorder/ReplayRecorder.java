@@ -1,23 +1,30 @@
 package moe.ku6.yukireplay.recorder;
 
+import com.github.retrooper.packetevents.protocol.chat.ChatTypes;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatMessage;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChatMessage;
 import lombok.Getter;
-import moe.ku6.yukireplay.codec.Instruction;
-import moe.ku6.yukireplay.codec.impl.player.InstructionAddPlayer;
-import moe.ku6.yukireplay.codec.impl.player.InstructionRemovePlayer;
-import moe.ku6.yukireplay.codec.impl.util.InstructionFrameEnd;
-import moe.ku6.yukireplay.util.Magic;
-import org.apache.commons.lang.NotImplementedException;
+import moe.ku6.yukireplay.YukiReplay;
+import moe.ku6.yukireplay.api.recorder.IRecorder;
+import moe.ku6.yukireplay.api.codec.Instruction;
+import moe.ku6.yukireplay.api.codec.impl.player.InstructionAddPlayer;
+import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerPosition;
+import moe.ku6.yukireplay.api.codec.impl.player.InstructionRemovePlayer;
+import moe.ku6.yukireplay.api.codec.impl.util.InstructionFrameEnd;
+import moe.ku6.yukireplay.api.recorder.RecorderOptions;
+import moe.ku6.yukireplay.api.util.Magic;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.player.PlayerMoveEvent;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -25,16 +32,19 @@ import java.util.*;
  * <br>
  * Thread safety: ReplayRecorder is not thread safe. It is designed to be used on the main thread only.
  */
-public class ReplayRecorder implements Listener {
-    private final JavaPlugin plugin;
+public class ReplayRecorder implements IRecorder {
+    private static int nextTrackerId = 128;
+    private final YukiReplay plugin = YukiReplay.getInstance();
     private final RecorderOptions options;
     private final World world;
     private final List<Integer> schedulerHandles = new ArrayList<>();
-    private final List<Player> players = new ArrayList<>();
+    private final Set<Player> players = new HashSet<>();
     private final Set<Chunk> chunks = new HashSet<>();
     private final Queue<Instruction> scheduledInstructions = new ArrayDeque<>();
     private final List<Instruction> instructions;
-    private final DataOutputStream outputStream = new DataOutputStream(new ByteArrayOutputStream());
+    private final Map<UUID, TrackedRecordingPlayer> trackedPlayers = new HashMap<>();
+    private final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+    private final RecorderListener listener;
     @Getter
     private boolean closed;
     @Getter
@@ -44,32 +54,51 @@ public class ReplayRecorder implements Listener {
      */
     @Getter
     private int frame;
+    @Getter
+    private byte[] optionalMetadata = new byte[0];
+    private boolean headersWritten;
+    private int writtenFrame = 0;
 
-    public ReplayRecorder(JavaPlugin plugin, World world, RecorderOptions options) {
-        this.plugin = plugin;
+    public ReplayRecorder(World world, RecorderOptions options) {
         this.world = world;
         this.options = options;
 
-        if (options.isAutoAddPlayers()) AddChunks(world.getLoadedChunks());
+        if (options.isAutoAddLoadedChunks()) AddChunks(world.getLoadedChunks());
 
         instructions = new ArrayList<>(options.getInitialSize());
 
-        Bukkit.getPluginManager().registerEvents(this, plugin);
+        listener = new RecorderListener(this);
         schedulerHandles.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, this::Update, 0, 1));
     }
 
-    public ReplayRecorder(JavaPlugin plugin, World world) {
-        this(plugin, world, RecorderOptions.Default());
+    public ReplayRecorder(World world) {
+        this(world, RecorderOptions.Default());
     }
 
+    public TrackedRecordingPlayer GetTrackedPlayer(Player player) {
+        EnsureValid();
+        Objects.requireNonNull(player, "player");
+        if (!recording) return null;
+        if (!players.contains(player)) return null;
+
+        return trackedPlayers.get(player.getUniqueId());
+    }
+
+    public int GetNextTrackerId() {
+        return nextTrackerId++;
+    }
+
+    @Override
     public void AddChunks(Chunk... chunks) {
         EnsureValid();
         for (var chunk : chunks) {
             if (!chunk.isLoaded())
                 throw new IllegalStateException("Chunk " + chunk + " is not loaded");
+            this.chunks.add(chunk);
         }
     }
 
+    @Override
     public void AddPlayers(Player... players) {
         EnsureValid();
         for (var player : players) {
@@ -83,6 +112,7 @@ public class ReplayRecorder implements Listener {
         this.players.addAll(List.of(players));
     }
 
+    @Override
     public void RemovePlayers(Player... players) {
         EnsureValid();
         for (var player : players) {
@@ -94,6 +124,7 @@ public class ReplayRecorder implements Listener {
         this.players.removeAll(List.of(players));
     }
 
+    @Override
     public void StartRecording() {
         EnsureValid();
         EnsureIsRecording(false);
@@ -104,12 +135,14 @@ public class ReplayRecorder implements Listener {
         recording = true;
     }
 
+    @Override
     public void StopRecording() {
         EnsureValid();
         EnsureIsRecording(true);
         recording = false;
     }
 
+    @Override
     public void SetRecording(boolean recording) {
         EnsureValid();
         if (this.recording == recording) return;
@@ -120,20 +153,34 @@ public class ReplayRecorder implements Listener {
         }
     }
 
+    @Override
     public void Close() {
         if (closed) return;
         closed = true;
+        listener.Close();
         schedulerHandles.forEach(Bukkit.getScheduler()::cancelTask);
         schedulerHandles.clear();
         players.clear();
         chunks.clear();
         instructions.clear();
         try {
-            outputStream.close();
+            byteStream.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        HandlerList.unregisterAll(this);
+    }
+
+    public void SetMetadata(byte[] data) {
+        EnsureValid();
+        Objects.requireNonNull(data, "data");
+        if (headersWritten)
+            throw new IllegalStateException("Headers already written. Cannot set metadata after headers are written.");
+
+        optionalMetadata = data;
+    }
+
+    public void SetMetadata(String data) {
+        SetMetadata(data.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -143,23 +190,87 @@ public class ReplayRecorder implements Listener {
      * <br>
      * Note 2: To discard the recorded frames after returning them, pass true to the flush parameter. After flushing, subsequent calls will only return new frames recorded, and will no longer contain headers and metadata. Use this if you want to flush the recorded frames to a file or a database.
      */
-    public byte[] Serialize(boolean flush) throws IOException{
+    @Override
+    public byte[] Serialize(boolean flush) throws IOException {
         EnsureValid();
 
-        if (outputStream.size() == 0) {
+        var outputStream = new DataOutputStream(byteStream);
+        if (!headersWritten) {
             // write headers and metadata
-            {
-                // headers
-                outputStream.write(Magic.FORMAT_MAGIC);
+            outputStream.write(Magic.FORMAT_MAGIC);
+            outputStream.writeShort(Magic.FORMAT_VERSION);
+            outputStream.writeInt(optionalMetadata.length);
+            outputStream.write(optionalMetadata);
+
+            headersWritten = true;
+        }
+
+        var frameOs = new ByteArrayOutputStream();
+        DataOutputStream frameStream = new DataOutputStream(frameOs);
+        var instructionOs = new ByteArrayOutputStream();
+        DataOutputStream instructionStream = new DataOutputStream(instructionOs);
+
+        int frameInstructionCount = 0;
+
+        for (var instruction : instructions) {
+            if (instruction == InstructionFrameEnd.INSTANCE) {
+                // end frame
+                ++writtenFrame;
+//                System.out.println("frame end: " + writtenFrame);
+                outputStream.writeInt(writtenFrame);
+                outputStream.writeShort(frameInstructionCount);
+                outputStream.write(frameOs.toByteArray());
+
+                frameOs.reset();
+
+                frameInstructionCount = 0;
+
+            } else {
+                frameStream.writeShort(instruction.GetType().getId());
+
+                instruction.Serialize(instructionStream);
+
+                frameStream.writeInt(instructionStream.size());
+                frameStream.write(instructionOs.toByteArray());
+
+                instructionOs.reset();
+
+                ++frameInstructionCount;
+//                System.out.println("instruction %s of frame %s".formatted(instruction, writtenFrame));
             }
         }
 
-        throw new NotImplementedException();
+        var ret = byteStream.toByteArray();
+        instructions.clear();
+
+        if (flush) {
+            byteStream.reset();
+        }
+
+        return ret;
     }
 
     private void Update() {
         if (closed) return;
         if (!recording) return;
+
+        // remove out of bounds players
+        for (var player : new ArrayList<>(players)) {
+            if (options.isAutoRemovePlayers() && !chunks.contains(player.getLocation().getChunk())) {
+                RemoveTrackedPlayer(player);
+            }
+
+            if (options.isAutoRemoveOfflinePlayers() && !player.isOnline()) {
+                RemoveTrackedPlayer(player);
+            }
+        }
+
+        // add in bounds players
+        for (var player : Bukkit.getOnlinePlayers()) {
+            if (!players.contains(player) && chunks.contains(player.getLocation().getChunk())) {
+                AddTrackedPlayer(player);
+            }
+        }
 
         ++frame;
         while (!scheduledInstructions.isEmpty()) {
@@ -170,9 +281,8 @@ public class ReplayRecorder implements Listener {
         instructions.add(InstructionFrameEnd.INSTANCE);
     }
 
-    private void ScheduleInstruction(Instruction instruction) {
+    public synchronized void ScheduleInstruction(Instruction instruction) {
         EnsureValid();
-        if (!recording) throw new IllegalStateException("ReplayRecorder is not recording");
         Objects.requireNonNull(instruction, "instruction");
 
         scheduledInstructions.add(instruction);
@@ -181,13 +291,20 @@ public class ReplayRecorder implements Listener {
     private void AddTrackedPlayer(Player player) {
         EnsureValid();
 
-        ScheduleInstruction(new InstructionAddPlayer(player));
+        var trackedPlayer = new TrackedRecordingPlayer(this, player);
+        trackedPlayers.put(player.getUniqueId(), trackedPlayer);
+
+        ScheduleInstruction(new InstructionAddPlayer(player, trackedPlayer.getTrackerId()));
+        ScheduleInstruction(new InstructionPlayerPosition(player, trackedPlayer.getTrackerId()));
+
     }
 
     private void RemoveTrackedPlayer(Player player) {
         EnsureValid();
+        var trackedPlayer = trackedPlayers.remove(player.getUniqueId());
+        if (trackedPlayer == null) return;
 
-        ScheduleInstruction(new InstructionRemovePlayer(player));
+        ScheduleInstruction(new InstructionRemovePlayer(player, trackedPlayer.getTrackerId()));
     }
 
     private void EnsureValid() {
@@ -198,5 +315,17 @@ public class ReplayRecorder implements Listener {
     private void EnsureIsRecording(boolean recording) {
         if (this.recording != recording)
             throw new IllegalStateException("ReplayRecorder is not " + (recording ? "recording" : "not recording"));
+    }
+
+    @Override
+    public String toString() {
+        return "ReplayRecorder(closed=%s, recording=%s, world=%s, frame=%s, players=%s, totalInstructions=%s".formatted(
+            closed,
+            recording,
+            world.getName(),
+            frame,
+            players.size(),
+            instructions.size()
+        );
     }
 }
