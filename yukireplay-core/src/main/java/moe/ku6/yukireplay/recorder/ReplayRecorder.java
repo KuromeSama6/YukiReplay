@@ -205,12 +205,10 @@ public class ReplayRecorder implements IRecorder {
             headersWritten = true;
         }
 
-        var frameOs = new ByteArrayOutputStream();
-        DataOutputStream frameStream = new DataOutputStream(frameOs);
-        var instructionOs = new ByteArrayOutputStream();
-        DataOutputStream instructionStream = new DataOutputStream(instructionOs);
 
         int frameInstructionCount = 0;
+        var frameOs = new ByteArrayOutputStream();
+        DataOutputStream frameStream = new DataOutputStream(frameOs);
 
         for (var instruction : instructions) {
             if (instruction == InstructionFrameEnd.INSTANCE) {
@@ -221,11 +219,11 @@ public class ReplayRecorder implements IRecorder {
                 outputStream.writeShort(frameInstructionCount);
                 outputStream.write(frameOs.toByteArray());
 
-                frameOs.reset();
-
                 frameInstructionCount = 0;
 
             } else {
+                var instructionOs = new ByteArrayOutputStream();
+                DataOutputStream instructionStream = new DataOutputStream(instructionOs);
                 frameStream.writeShort(instruction.GetType().getId());
 
                 instruction.Serialize(instructionStream);
