@@ -4,6 +4,8 @@ import lombok.ToString;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.util.CodecUtil;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.io.DataOutputStream;
@@ -27,7 +29,7 @@ public class InstructionPlayerPosition extends PlayerInstruction {
     public InstructionPlayerPosition(ByteBuffer buf) {
         super(buf);
 
-        var flags = new byte[2];
+        var flags = new byte[1];
         buf.get(flags);
         this.flags = BitSet.valueOf(flags);
 
@@ -72,7 +74,7 @@ public class InstructionPlayerPosition extends PlayerInstruction {
     public void Serialize(DataOutputStream out) throws IOException {
         super.Serialize(out);
 
-        out.write(flags.toByteArray());
+        out.write(CodecUtil.ToFixedLengthBytes(flags, 1));
 
         if (flags.get(0)) out.writeDouble(x);
         if (flags.get(1)) out.writeDouble(y);
@@ -84,6 +86,13 @@ public class InstructionPlayerPosition extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-
+        var player = playback.GetTrackedPlayer(trackerId);
+        var pos = player.GetLocation();
+        if (flags.get(0)) pos.setX(x);
+        if (flags.get(1)) pos.setY(y);
+        if (flags.get(2)) pos.setZ(z);
+        if (flags.get(3)) pos.setYaw(yaw);
+        if (flags.get(4)) pos.setPitch(pitch);
+        player.SetLocation(pos);
     }
 }

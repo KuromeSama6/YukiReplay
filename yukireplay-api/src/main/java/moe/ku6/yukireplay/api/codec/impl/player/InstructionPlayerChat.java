@@ -32,7 +32,9 @@ public class InstructionPlayerChat extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-
+        var player = playback.GetTrackedPlayer(trackerId);
+        var msg = "§3[Replay] %s: §7%s".formatted(player.GetName(), message);
+        playback.GetViewers().forEach(c -> c.sendMessage(msg));
     }
 
     @Override

@@ -22,7 +22,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class ReplayPlayback implements IPlayback, Listener {
-    @Getter
     private final World world;
     @Getter
     private final byte[] metadata;
@@ -69,8 +68,8 @@ public class ReplayPlayback implements IPlayback, Listener {
             if (frame != frameNumber)
                 throw new PlaybackLoadException("Frame number mismatch, got %d, expected %d".formatted(frame, frameNumber));
 
+            List<Instruction> instructions = new ArrayList<>();
             int instructionCount = buf.getShort();
-            List<Instruction> instructions = new ArrayList<>(instructionCount);
             for (int i = 0; i < instructionCount; i++) {
                 var id = buf.getShort();
                 var type = InstructionType.ById(id);
@@ -83,13 +82,13 @@ public class ReplayPlayback implements IPlayback, Listener {
 
                 var instruction = type.CreateInstance(payload);
                 instructions.add(instruction);
-
             }
 
+            frames.add(instructions);
             ++frameNumber;
         }
 
-        Bukkit.getScheduler().scheduleSyncRepeatingTask(YukiReplay.getInstance(), this::Update, 0, 1);
+        schedulerHandles.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(YukiReplay.getInstance(), this::Update, 0, 1));
         Bukkit.getPluginManager().registerEvents(this, YukiReplay.getInstance());
     }
 
@@ -131,6 +130,7 @@ public class ReplayPlayback implements IPlayback, Listener {
         if (trackedPlayers.containsKey(player.GetTrackerId())) {
             throw new IllegalStateException("Player with tracker id %d already exists".formatted(player.GetTrackerId()));
         }
+//        System.out.println("add tracked player");
         trackedPlayers.put(player.GetTrackerId(), (TrackedPlaybackPlayer)player);
         viewers.forEach(player::SpawnFor);
     }
@@ -166,11 +166,22 @@ public class ReplayPlayback implements IPlayback, Listener {
     }
 
     @Override
+    public Collection<Player> GetViewers() {
+        return viewers;
+    }
+
+    @Override
+    public World GetWorld() {
+        return world;
+    }
+
+    @Override
     public void StepPlayback() {
         EnsureValid();
-        if (playhead > frames.size()) return;
+        if (playhead >= frames.size()) return;
         ++playhead;
 
+//        System.out.println("playhead: " + playhead);
         for (var instruction : frames.get(playhead - 1)) {
             instruction.Apply(this);
         }
@@ -178,6 +189,10 @@ public class ReplayPlayback implements IPlayback, Listener {
 
     private void Update() {
         if (!playing) return;
+        StepPlayback();
+        if (playhead >= frames.size()) {
+            playing = false;
+        }
     }
 
     @Override

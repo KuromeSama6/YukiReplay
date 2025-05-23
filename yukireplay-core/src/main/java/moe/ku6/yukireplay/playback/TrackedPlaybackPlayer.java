@@ -13,20 +13,32 @@ import java.util.UUID;
 
 public class TrackedPlaybackPlayer extends AbstractTrackedPlaybackEntity implements IPlaybackPlayer {
     private final UUID uuid;
+    private final String name;
     private final IGameProfile gameProfile;
     private final IClientPlayer clientPlayer;
 
     public TrackedPlaybackPlayer(ReplayPlayback playback, InstructionAddPlayer instruction) {
         super(playback, instruction.getTrackerId());
         uuid = instruction.getUuid();
+        name = instruction.getName();
 
         gameProfile = YukiReplay.getInstance().getVersionAdaptor().CreateGameProfile(uuid, instruction.getName());
-        clientPlayer = YukiReplay.getInstance().getVersionAdaptor().CreateClientPlayer(playback.getWorld(), gameProfile);
+        clientPlayer = YukiReplay.getInstance().getVersionAdaptor().CreateClientPlayer(playback.GetWorld(), gameProfile);
     }
 
     @Override
     public UUID GetUUID() {
         return uuid;
+    }
+
+    @Override
+    public String GetName() {
+        return name;
+    }
+
+    @Override
+    public IClientPlayer GetClientPlayer() {
+        return clientPlayer;
     }
 
     @Override

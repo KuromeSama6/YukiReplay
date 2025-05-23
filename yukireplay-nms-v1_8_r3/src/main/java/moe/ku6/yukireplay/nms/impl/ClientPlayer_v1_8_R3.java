@@ -8,6 +8,7 @@ import net.minecraft.server.v1_8_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -19,7 +20,7 @@ public class ClientPlayer_v1_8_R3 extends AbstractClientEntity_v1_8_R3 implement
 
     public ClientPlayer_v1_8_R3(World world, IGameProfile gameProfile) {
         super(world);
-        var server = (MinecraftServer)Bukkit.getServer();
+        var server = ((CraftServer)Bukkit.getServer()).getServer();
         var nmsWorld = ((CraftWorld)world).getHandle();
         this.gameProfile = gameProfile;
         interactManager = new PlayerInteractManager(nmsWorld);
@@ -84,6 +85,22 @@ public class ClientPlayer_v1_8_R3 extends AbstractClientEntity_v1_8_R3 implement
     public void SetSkin(String value, String signature) {
         var property = new GameProfilePropertyWrapper("textures", value, signature);
         gameProfile.SetProperty("textures", property);
+    }
+
+    @Override
+    public void SetSneaking(boolean sneaking) {
+        var watcher = new DataWatcher(null);
+        watcher.a(0, (byte) (sneaking ? 0x02 : 0x00));
+        var packet = new PacketPlayOutEntityMetadata(player.getId(), watcher, true);
+        for (var viewer : viewers) {
+            var handle = ((CraftPlayer)viewer).getHandle();
+            handle.playerConnection.sendPacket(packet);
+        }
+    }
+
+    @Override
+    public void SetHealth(float health) {
+        player.setHealth(health);
     }
 
 }

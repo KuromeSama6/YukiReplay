@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.BitSet;
 import java.util.UUID;
 
 @UtilityClass
@@ -14,13 +15,21 @@ public class CodecUtil {
         var size = buf.getInt();
         if (size < 0)
             throw new IllegalArgumentException("Invalid string size: " + size);
+        else if (size == 0)
+            return "";
 
         var bytes = new byte[size];
+
+
         buf.get(bytes);
         return new String(bytes, StandardCharsets.UTF_8);
     }
 
     public static void WriteLengthPrefixed(DataOutputStream out, String str) {
+        if (str == null) {
+            str = "";
+        }
+
         var bytes = str.getBytes(StandardCharsets.UTF_8);
         try {
             out.writeInt(bytes.length);
@@ -44,4 +53,15 @@ public class CodecUtil {
             throw new RuntimeException(e);
         }
     }
+
+    public static byte[] ToFixedLengthBytes(BitSet bitSet, int byteLength) {
+        byte[] raw = bitSet.toByteArray(); // May be shorter than byteLength
+        byte[] result = new byte[byteLength];
+
+        // Copy raw bytes into result (up to min length)
+        System.arraycopy(raw, 0, result, 0, Math.min(raw.length, byteLength));
+
+        return result;
+    }
+
 }

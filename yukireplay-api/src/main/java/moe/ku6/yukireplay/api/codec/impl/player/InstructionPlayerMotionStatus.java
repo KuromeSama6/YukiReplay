@@ -1,9 +1,15 @@
 package moe.ku6.yukireplay.api.codec.impl.player;
 
+import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityDataType;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityAnimation;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import lombok.ToString;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.util.CodecUtil;
 import org.bukkit.entity.Player;
 
 import java.io.DataOutputStream;
@@ -25,25 +31,29 @@ public class InstructionPlayerMotionStatus extends PlayerInstruction {
 
     public InstructionPlayerMotionStatus(ByteBuffer buf) {
         super(buf);
-        flag = new BitSet(buf.get());
+//        System.out.println("buffer len: " + buf.remaining());
+        var flags = new byte[1];
+        buf.get(flags);
+        flag = BitSet.valueOf(flags);
     }
 
-    public InstructionPlayerMotionStatus(int trackerId, boolean sneaking, boolean flying) {
+    public InstructionPlayerMotionStatus(int trackerId, boolean sneaking, boolean sprinting) {
         super(trackerId);
         flag = new BitSet(2);
         flag.set(0, sneaking);
-        flag.set(1, flying);
+        flag.set(1, sprinting);
     }
 
     @Override
     public void Serialize(DataOutputStream out) throws IOException {
         super.Serialize(out);
-        out.write(flag.toByteArray());
+        out.write(CodecUtil.ToFixedLengthBytes(flag, 1));
     }
 
     @Override
     public void Apply(IPlayback playback) {
-
+        var player = playback.GetTrackedPlayer(trackerId);
+        player.GetClientPlayer().SetSneaking(flag.get(0));
     }
 
     @Override

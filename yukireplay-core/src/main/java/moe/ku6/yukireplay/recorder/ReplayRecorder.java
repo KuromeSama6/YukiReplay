@@ -1,8 +1,5 @@
 package moe.ku6.yukireplay.recorder;
 
-import com.github.retrooper.packetevents.protocol.chat.ChatTypes;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientChatMessage;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChatMessage;
 import lombok.Getter;
 import moe.ku6.yukireplay.YukiReplay;
 import moe.ku6.yukireplay.api.recorder.IRecorder;
@@ -17,9 +14,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.player.PlayerMoveEvent;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -77,7 +71,7 @@ public class ReplayRecorder implements IRecorder {
 
     public TrackedRecordingPlayer GetTrackedPlayer(Player player) {
         EnsureValid();
-        Objects.requireNonNull(player, "player");
+        if (player == null) return null;
         if (!recording) return null;
         if (!players.contains(player)) return null;
 
@@ -220,6 +214,8 @@ public class ReplayRecorder implements IRecorder {
                 outputStream.write(frameOs.toByteArray());
 
                 frameInstructionCount = 0;
+                frameOs.reset();
+                frameStream = new DataOutputStream(frameOs);
 
             } else {
                 var instructionOs = new ByteArrayOutputStream();
@@ -270,6 +266,13 @@ public class ReplayRecorder implements IRecorder {
             }
         }
 
+        trackedPlayers.values().forEach(TrackedRecordingPlayer::Update);
+        if (frame % 20 == 0) {
+            for (var tracked : trackedPlayers.values()) {
+                tracked.SaveInventory();
+            }
+        }
+
         ++frame;
         while (!scheduledInstructions.isEmpty()) {
             var instruction = scheduledInstructions.poll();
@@ -294,7 +297,7 @@ public class ReplayRecorder implements IRecorder {
 
         ScheduleInstruction(new InstructionAddPlayer(player, trackedPlayer.getTrackerId()));
         ScheduleInstruction(new InstructionPlayerPosition(player, trackedPlayer.getTrackerId()));
-
+        trackedPlayer.SaveInventory();
     }
 
     private void RemoveTrackedPlayer(Player player) {

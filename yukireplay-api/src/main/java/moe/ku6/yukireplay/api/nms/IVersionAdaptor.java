@@ -3,10 +3,13 @@ package moe.ku6.yukireplay.api.nms;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.UUID;
 
 public interface IVersionAdaptor {
+    String SerializeItemStack(ItemStack item);
+    ItemStack DeserializeItemStack(String item);
     IGameProfile CreateGameProfile(UUID uuid, String name);
     IGameProfile GetGameProfile(Player player);
     IClientPlayer CreateClientPlayer(World world, IGameProfile gameProfile);

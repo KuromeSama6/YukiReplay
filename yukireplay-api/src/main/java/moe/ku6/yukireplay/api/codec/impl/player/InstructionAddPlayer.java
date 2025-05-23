@@ -54,6 +54,7 @@ public class InstructionAddPlayer extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
+//        System.out.println("add player, " + this);
         var trackedPlayer = YukiReplayAPI.Get().CreatePlaybackPlayer(playback, this);
         playback.AddTrackedPlayer(trackedPlayer);
     }
