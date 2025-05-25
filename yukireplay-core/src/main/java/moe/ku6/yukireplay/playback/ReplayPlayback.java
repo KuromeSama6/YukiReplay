@@ -8,6 +8,7 @@ import moe.ku6.yukireplay.api.exception.InvalidMagicException;
 import moe.ku6.yukireplay.api.exception.PlaybackLoadException;
 import moe.ku6.yukireplay.api.exception.VersionMismatchException;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackEntity;
 import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.util.Magic;
 import org.bukkit.Bukkit;
@@ -28,7 +29,7 @@ public class ReplayPlayback implements IPlayback, Listener {
     private final List<List<Instruction>> frames = new ArrayList<>();
     private final List<Integer> schedulerHandles = new ArrayList<>();
     private final Set<Player> viewers = new HashSet<>();
-    private final Map<Integer, TrackedPlaybackPlayer> trackedPlayers = new HashMap<>();
+    private final Map<Integer, TrackedPlaybackEntity> tracked = new HashMap<>();
     private int playhead = 0;
     private boolean closed;
     private boolean playing;
@@ -98,7 +99,7 @@ public class ReplayPlayback implements IPlayback, Listener {
         viewers.addAll(Arrays.asList(players));
 
         for (var player : players) {
-            for (var trackedPlayer : trackedPlayers.values()) {
+            for (var trackedPlayer : tracked.values()) {
                 trackedPlayer.SpawnFor(player);
             }
         }
@@ -112,35 +113,49 @@ public class ReplayPlayback implements IPlayback, Listener {
         }
 
         for (var player : players) {
-            for (var trackedPlayer : trackedPlayers.values()) {
+            for (var trackedPlayer : tracked.values()) {
                 trackedPlayer.DespawnFor(player);
             }
         }
     }
 
     @Override
-    public IPlaybackPlayer GetTrackedPlayer(int trackerId) {
+    public <T extends IPlaybackEntity> T GetTracked(int trackerId) {
+        return (T) tracked.get(trackerId);
+    }
+
+    @Override
+    public void AddTrackedEntity(IPlaybackEntity entity) {
         EnsureValid();
-        return trackedPlayers.get(trackerId);
+        if (tracked.containsKey(entity.GetTrackerId())) {
+            throw new IllegalStateException("Entity with tracker id %d already exists".formatted(entity.GetTrackerId()));
+        }
+        if (!(entity instanceof TrackedPlaybackEntity trackedEntity)) {
+            throw new IllegalArgumentException("Entity must be an instance of TrackedPlaybackEntity");
+        }
+        tracked.put(entity.GetTrackerId(), trackedEntity);
+        viewers.forEach(trackedEntity::SpawnFor);
     }
 
     @Override
     public void AddTrackedPlayer(IPlaybackPlayer player) {
+        AddTrackedEntity(player);
+    }
+
+    @Override
+    public void RemoveTrackedEntity(IPlaybackEntity entity) {
         EnsureValid();
-        if (trackedPlayers.containsKey(player.GetTrackerId())) {
-            throw new IllegalStateException("Player with tracker id %d already exists".formatted(player.GetTrackerId()));
+        if (!(entity instanceof TrackedPlaybackEntity trackedEntity)) {
+            throw new IllegalArgumentException("Entity must be an instance of TrackedPlaybackEntity");
         }
-//        System.out.println("add tracked player");
-        trackedPlayers.put(player.GetTrackerId(), (TrackedPlaybackPlayer)player);
-        viewers.forEach(player::SpawnFor);
+        tracked.remove(trackedEntity.GetTrackerId());
+        entity.Remove();
+        viewers.forEach(trackedEntity::DespawnFor);
     }
 
     @Override
     public void RemoveTrackedPlayer(IPlaybackPlayer player) {
-        EnsureValid();
-        trackedPlayers.remove(player.GetTrackerId());
-        player.Remove();
-        viewers.forEach(player::DespawnFor);
+        RemoveTrackedEntity(player);
     }
 
     @Override

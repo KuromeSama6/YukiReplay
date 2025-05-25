@@ -1,13 +1,12 @@
 package moe.ku6.yukireplay.api.codec.impl.player;
 
 import com.github.retrooper.packetevents.PacketEvents;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientAnimation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityAnimation;
 import lombok.ToString;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
-import org.bukkit.entity.Player;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 
 import java.nio.ByteBuffer;
 
@@ -28,7 +27,7 @@ public class InstructionPlayerArmSwing extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var player = playback.GetTrackedPlayer(trackerId);
+        IPlaybackPlayer player = playback.GetTracked(trackerId);
         var packet = new WrapperPlayServerEntityAnimation(player.GetClientPlayer().GetEntityId(), WrapperPlayServerEntityAnimation.EntityAnimationType.SWING_MAIN_ARM);
         playback.GetViewers().forEach(c -> PacketEvents.getAPI().getPlayerManager().sendPacket(c, packet));
     }

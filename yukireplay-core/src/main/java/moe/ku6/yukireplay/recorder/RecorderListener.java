@@ -11,12 +11,14 @@ import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPl
 import moe.ku6.yukireplay.YukiReplay;
 import moe.ku6.yukireplay.api.codec.impl.block.InstructionBlockBreakProgress;
 import moe.ku6.yukireplay.api.codec.impl.block.InstructionBlockChange;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionPotSpawn;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerArmSwing;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerChat;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerDamage;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerDeath;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.ThrownPotion;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
@@ -25,7 +27,9 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntitySpawnEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -115,6 +119,22 @@ public class RecorderListener implements Listener, PacketListener {
         var tracked = recorder.GetTrackedPlayer(e.getPlayer());
         if (tracked == null) return;
         Bukkit.getScheduler().scheduleSyncDelayedTask(YukiReplay.getInstance(), tracked::SaveInventory, 1);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void OnProjectileLaunch(ProjectileLaunchEvent e) {
+        var shooter = e.getEntity().getShooter();
+        if (!(shooter instanceof Player shooterPlayer)) return;
+        var tracked = recorder.GetTrackedPlayer(shooterPlayer);
+        if (tracked == null) return;
+
+        var projectile = e.getEntity();
+
+        if (projectile instanceof ThrownPotion thrownPotion) {
+            var trackedEntity = recorder.AddTrackedEntity(projectile);
+            recorder.ScheduleInstruction(new InstructionPotSpawn(trackedEntity.getTrackerId(), tracked.getTrackerId(), thrownPotion));
+            trackedEntity.UpdatePosition();
+        }
     }
 
     @Override

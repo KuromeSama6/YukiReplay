@@ -4,6 +4,7 @@ import lombok.ToString;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.util.CodecUtil;
 import org.bukkit.entity.Player;
 
@@ -33,7 +34,7 @@ public class InstructionRemovePlayer extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var player = playback.GetTrackedPlayer(trackerId);
+        IPlaybackPlayer player = playback.GetTracked(trackerId);
         if (player != null) {
             playback.RemoveTrackedPlayer(player);
         }

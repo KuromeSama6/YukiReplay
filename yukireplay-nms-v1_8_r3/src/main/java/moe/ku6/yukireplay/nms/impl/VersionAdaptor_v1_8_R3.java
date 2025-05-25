@@ -3,6 +3,8 @@ package moe.ku6.yukireplay.nms.impl;
 import moe.ku6.yukireplay.api.nms.IClientPlayer;
 import moe.ku6.yukireplay.api.nms.IGameProfile;
 import moe.ku6.yukireplay.api.nms.IVersionAdaptor;
+import moe.ku6.yukireplay.api.nms.entity.IClientSplashPotion;
+import moe.ku6.yukireplay.api.util.SimpleLocation;
 import net.minecraft.server.v1_8_R3.BlockState;
 import net.minecraft.server.v1_8_R3.MojangsonParseException;
 import net.minecraft.server.v1_8_R3.MojangsonParser;
@@ -55,5 +57,10 @@ public class VersionAdaptor_v1_8_R3 implements IVersionAdaptor {
     @Override
     public IClientPlayer CreateClientPlayer(World world, IGameProfile gameProfile) {
         return new ClientPlayer_v1_8_R3(world, gameProfile);
+    }
+
+    @Override
+    public IClientSplashPotion CreateClientSplashPotion(World world, SimpleLocation pos, ItemStack potionItem) {
+        return new ClientSplashPotion_v1_8_R3(world, pos, potionItem);
     }
 }

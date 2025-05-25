@@ -1,11 +1,12 @@
-package moe.ku6.yukireplay.api.codec.impl.player;
+package moe.ku6.yukireplay.api.codec.impl.entity;
 
 import lombok.ToString;
 import moe.ku6.yukireplay.api.codec.InstructionType;
-import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
+import moe.ku6.yukireplay.api.codec.impl.EntityInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
+import moe.ku6.yukireplay.api.playback.IPlaybackSplashPotion;
 import moe.ku6.yukireplay.api.util.CodecUtil;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import java.io.DataOutputStream;
@@ -14,7 +15,7 @@ import java.nio.ByteBuffer;
 import java.util.BitSet;
 
 @ToString
-public class InstructionPlayerPosition extends PlayerInstruction {
+public class InstructionEntityPosition extends EntityInstruction {
     /**
      * A bitset indicating which aspects of the player's position is modified, in the following order:
      * <br>
@@ -26,7 +27,7 @@ public class InstructionPlayerPosition extends PlayerInstruction {
     private final double x, y, z;
     private final float yaw, pitch;
 
-    public InstructionPlayerPosition(ByteBuffer buf) {
+    public InstructionEntityPosition(ByteBuffer buf) {
         super(buf);
 
         var flags = new byte[1];
@@ -42,10 +43,10 @@ public class InstructionPlayerPosition extends PlayerInstruction {
 
     @Override
     public InstructionType GetType() {
-        return InstructionType.PLAYER_POSITION;
+        return InstructionType.ENTITY_POSITION;
     }
 
-    public InstructionPlayerPosition(int trackerId, Double x, Double y, Double z, Float yaw, Float pitch) {
+    public InstructionEntityPosition(int trackerId, Double x, Double y, Double z, Float yaw, Float pitch) {
         super(trackerId);
 
         this.x = x == null ? 0 : x;
@@ -62,7 +63,7 @@ public class InstructionPlayerPosition extends PlayerInstruction {
         flags.set(4, pitch != null);
     }
 
-    public InstructionPlayerPosition(Player player, int trackerId) {
+    public InstructionEntityPosition(Player player, int trackerId) {
         this(trackerId, player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ(), player.getLocation().getYaw(), player.getLocation().getPitch());
     }
 
@@ -86,13 +87,13 @@ public class InstructionPlayerPosition extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var player = playback.GetTrackedPlayer(trackerId);
-        var pos = player.GetLocation();
+        var entity = playback.GetTracked(trackerId);
+        var pos = entity.GetLocation();
         if (flags.get(0)) pos.setX(x);
         if (flags.get(1)) pos.setY(y);
         if (flags.get(2)) pos.setZ(z);
         if (flags.get(3)) pos.setYaw(yaw);
         if (flags.get(4)) pos.setPitch(pitch);
-        player.SetLocation(pos);
+        entity.SetLocation(pos);
     }
 }

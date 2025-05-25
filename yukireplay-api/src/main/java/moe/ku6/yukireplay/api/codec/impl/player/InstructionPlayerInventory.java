@@ -11,14 +11,13 @@ import moe.ku6.yukireplay.api.YukiReplayAPI;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.util.CodecUtil;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class InstructionPlayerInventory extends PlayerInstruction {
@@ -56,7 +55,7 @@ public class InstructionPlayerInventory extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var player = playback.GetTrackedPlayer(trackerId);
+        IPlaybackPlayer player = playback.GetTracked(trackerId);
 
         var equipments = List.of(new Equipment(slot.equipmentSlot, SpigotConversionUtil.fromBukkitItemStack(item)));
 

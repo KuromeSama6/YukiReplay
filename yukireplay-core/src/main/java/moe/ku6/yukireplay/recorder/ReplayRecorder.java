@@ -2,10 +2,11 @@ package moe.ku6.yukireplay.recorder;
 
 import lombok.Getter;
 import moe.ku6.yukireplay.YukiReplay;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionEntityDespawn;
 import moe.ku6.yukireplay.api.recorder.IRecorder;
 import moe.ku6.yukireplay.api.codec.Instruction;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionAddPlayer;
-import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerPosition;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionEntityPosition;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionRemovePlayer;
 import moe.ku6.yukireplay.api.codec.impl.util.InstructionFrameEnd;
 import moe.ku6.yukireplay.api.recorder.RecorderOptions;
@@ -13,6 +14,7 @@ import moe.ku6.yukireplay.api.util.Magic;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import java.io.ByteArrayOutputStream;
@@ -36,7 +38,7 @@ public class ReplayRecorder implements IRecorder {
     private final Set<Chunk> chunks = new HashSet<>();
     private final Queue<Instruction> scheduledInstructions = new ArrayDeque<>();
     private final List<Instruction> instructions;
-    private final Map<UUID, TrackedRecordingPlayer> trackedPlayers = new HashMap<>();
+    private final Map<UUID, TrackedRecordingEntity> trackedEntities = new HashMap<>();
     private final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
     private final RecorderListener listener;
     @Getter
@@ -69,13 +71,21 @@ public class ReplayRecorder implements IRecorder {
         this(world, RecorderOptions.Default());
     }
 
-    public TrackedRecordingPlayer GetTrackedPlayer(Player player) {
+    public TrackedRecordingEntity GetTrackedEntity(Entity entity) {
         EnsureValid();
-        if (player == null) return null;
+        if (!recording) return null;
+        if (!trackedEntities.containsKey(entity.getUniqueId())) return null;
+
+        return trackedEntities.get(entity.getUniqueId());
+    }
+
+    public TrackedRecordingPlayer GetTrackedPlayer(Entity entity) {
+        EnsureValid();
+        if (!(entity instanceof Player player)) return null;
         if (!recording) return null;
         if (!players.contains(player)) return null;
 
-        return trackedPlayers.get(player.getUniqueId());
+        return (TrackedRecordingPlayer)trackedEntities.get(player.getUniqueId());
     }
 
     public int GetNextTrackerId() {
@@ -266,10 +276,23 @@ public class ReplayRecorder implements IRecorder {
             }
         }
 
-        trackedPlayers.values().forEach(TrackedRecordingPlayer::Update);
+        for (var tracked : new ArrayList<>(trackedEntities.values())) {
+            if (tracked instanceof TrackedRecordingPlayer) continue;
+            if (!tracked.getEntity().isValid()) {
+                RemoveTrackedEntity(tracked.getEntity());
+                continue;
+            }
+
+            tracked.UpdatePosition();
+        }
+
+        trackedEntities.values().forEach(TrackedRecordingEntity::Update);
         if (frame % 20 == 0) {
-            for (var tracked : trackedPlayers.values()) {
-                tracked.SaveInventory();
+            for (var tracked : trackedEntities.values()) {
+                if (tracked instanceof TrackedRecordingPlayer trackedPlayer) {
+                    trackedPlayer.SaveInventory();
+
+                }
             }
         }
 
@@ -293,19 +316,37 @@ public class ReplayRecorder implements IRecorder {
         EnsureValid();
 
         var trackedPlayer = new TrackedRecordingPlayer(this, player);
-        trackedPlayers.put(player.getUniqueId(), trackedPlayer);
+        trackedEntities.put(player.getUniqueId(), trackedPlayer);
 
         ScheduleInstruction(new InstructionAddPlayer(player, trackedPlayer.getTrackerId()));
-        ScheduleInstruction(new InstructionPlayerPosition(player, trackedPlayer.getTrackerId()));
+        ScheduleInstruction(new InstructionEntityPosition(player, trackedPlayer.getTrackerId()));
         trackedPlayer.SaveInventory();
+    }
+
+    public TrackedRecordingEntity AddTrackedEntity(Entity entity) {
+        EnsureValid();
+        if (trackedEntities.containsKey(entity.getUniqueId())) return null;
+
+        var trackedEntity = new TrackedRecordingEntity(this, entity);
+        trackedEntities.put(entity.getUniqueId(), trackedEntity);
+
+        return trackedEntity;
     }
 
     private void RemoveTrackedPlayer(Player player) {
         EnsureValid();
-        var trackedPlayer = trackedPlayers.remove(player.getUniqueId());
+        var trackedPlayer = trackedEntities.remove(player.getUniqueId());
         if (trackedPlayer == null) return;
 
         ScheduleInstruction(new InstructionRemovePlayer(player, trackedPlayer.getTrackerId()));
+    }
+
+    private void RemoveTrackedEntity(Entity entity) {
+        EnsureValid();
+        var trackedEntity = trackedEntities.remove(entity.getUniqueId());
+        if (trackedEntity == null) return;
+
+        ScheduleInstruction(new InstructionEntityDespawn(trackedEntity.getTrackerId()));
     }
 
     private void EnsureValid() {

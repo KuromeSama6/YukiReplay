@@ -4,7 +4,6 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
-import java.util.UUID;
 
 public interface IPlayback {
     World GetWorld();
@@ -13,8 +12,10 @@ public interface IPlayback {
     void Close();
     void AddViewers(Player... players);
     void RemoveViewers(Player... players);
-    IPlaybackPlayer GetTrackedPlayer(int trackerId);
+    <T extends IPlaybackEntity> T GetTracked(int trackerId);
+    void AddTrackedEntity(IPlaybackEntity entity);
     void AddTrackedPlayer(IPlaybackPlayer player);
+    void RemoveTrackedEntity(IPlaybackEntity entity);
     void RemoveTrackedPlayer(IPlaybackPlayer player);
     boolean IsPlaying();
     void SetPlaying(boolean playing);

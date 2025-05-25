@@ -1,6 +1,11 @@
 package moe.ku6.yukireplay.nms.impl;
 
 import moe.ku6.yukireplay.api.nms.IClientEntity;
+import net.minecraft.server.v1_8_R3.Entity;
+import net.minecraft.server.v1_8_R3.Packet;
+import net.minecraft.server.v1_8_R3.PacketPlayOutEntityDestroy;
+import net.minecraft.server.v1_8_R3.PacketPlayOutEntityTeleport;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
@@ -16,8 +21,31 @@ public abstract class AbstractClientEntity_v1_8_R3 implements IClientEntity {
         this.world = world;
     }
 
+    protected abstract Entity GetEntity();
     protected abstract void SpawnClientEntity(Player viewer);
-    protected abstract void DespawnClientEntity(Player viewer);
+    protected void DespawnClientEntity(Player viewer) {
+        var packet = new PacketPlayOutEntityDestroy(GetEntityId());
+        SendViewerPacket(packet);
+    }
+
+    @Override
+    public int GetEntityId() {
+        return GetEntity().getId();
+    }
+
+    @Override
+    public Location GetLocation() {
+        return GetEntity().getBukkitEntity().getLocation();
+    }
+
+    @Override
+    public void SetLocation(Location location) {
+        var entity = GetEntity();
+        entity.setLocation(location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch());
+
+        var packet = new PacketPlayOutEntityTeleport(entity);
+        SendViewerPacket(packet);
+    }
 
     @Override
     public void SpawnTo(Player viewer) {
@@ -34,6 +62,12 @@ public abstract class AbstractClientEntity_v1_8_R3 implements IClientEntity {
             return;
         }
         viewers.remove(viewer);
-        var handle = ((CraftPlayer)viewer).getHandle();
+        DespawnClientEntity(viewer);
+    }
+
+    protected void SendViewerPacket(Packet packet) {
+        for (Player viewer : viewers) {
+            ((CraftPlayer)viewer).getHandle().playerConnection.sendPacket(packet);
+        }
     }
 }

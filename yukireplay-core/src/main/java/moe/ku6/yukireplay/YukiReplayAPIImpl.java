@@ -2,15 +2,18 @@ package moe.ku6.yukireplay;
 
 import lombok.AllArgsConstructor;
 import moe.ku6.yukireplay.api.IYukiReplayAPI;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionPotSpawn;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionAddPlayer;
 import moe.ku6.yukireplay.api.exception.PlaybackLoadException;
 import moe.ku6.yukireplay.api.nms.IVersionAdaptor;
 import moe.ku6.yukireplay.api.playback.IPlayback;
 import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
+import moe.ku6.yukireplay.api.playback.IPlaybackSplashPotion;
 import moe.ku6.yukireplay.api.recorder.IRecorder;
 import moe.ku6.yukireplay.api.recorder.RecorderOptions;
 import moe.ku6.yukireplay.playback.ReplayPlayback;
 import moe.ku6.yukireplay.playback.TrackedPlaybackPlayer;
+import moe.ku6.yukireplay.playback.entity.TrackedPlaybackSplashPotion;
 import moe.ku6.yukireplay.recorder.ReplayRecorder;
 import org.bukkit.World;
 
@@ -36,5 +39,10 @@ public class YukiReplayAPIImpl implements IYukiReplayAPI {
     @Override
     public IPlaybackPlayer CreatePlaybackPlayer(IPlayback playback, InstructionAddPlayer instruction) {
         return new TrackedPlaybackPlayer((ReplayPlayback)playback, instruction);
+    }
+
+    @Override
+    public IPlaybackSplashPotion CreateSplashPotion(IPlayback playback, InstructionPotSpawn instruction) {
+        return new TrackedPlaybackSplashPotion((ReplayPlayback)playback, instruction);
     }
 }

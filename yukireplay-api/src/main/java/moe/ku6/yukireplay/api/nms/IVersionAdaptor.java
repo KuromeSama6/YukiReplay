@@ -1,5 +1,8 @@
 package moe.ku6.yukireplay.api.nms;
 
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
+import moe.ku6.yukireplay.api.nms.entity.IClientSplashPotion;
+import moe.ku6.yukireplay.api.util.SimpleLocation;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -13,6 +16,7 @@ public interface IVersionAdaptor {
     IGameProfile CreateGameProfile(UUID uuid, String name);
     IGameProfile GetGameProfile(Player player);
     IClientPlayer CreateClientPlayer(World world, IGameProfile gameProfile);
+    IClientSplashPotion CreateClientSplashPotion(World world, SimpleLocation pos, ItemStack potionItem);
 
     static IVersionAdaptor Get() {
         var versionStr = GetNMSVersion();

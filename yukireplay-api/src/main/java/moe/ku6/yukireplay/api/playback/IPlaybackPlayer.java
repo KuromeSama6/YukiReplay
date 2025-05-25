@@ -1,6 +1,7 @@
 package moe.ku6.yukireplay.api.playback;
 
 import moe.ku6.yukireplay.api.nms.IClientPlayer;
+import org.bukkit.entity.Player;
 
 import java.util.UUID;
 

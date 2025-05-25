@@ -4,29 +4,19 @@ import lombok.Getter;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerArmSwing;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerInventory;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerMotionStatus;
-import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerPosition;
 import moe.ku6.yukireplay.api.util.ItemUtil;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-public class TrackedRecordingPlayer {
-    private final ReplayRecorder recorder;
-    @Getter
-    private final int trackerId;
+public class TrackedRecordingPlayer extends TrackedRecordingEntity {
     @Getter
     private final Player player;
-    @Getter
-    private double lastX, lastY, lastZ;
-    @Getter
-    private float lastYaw, lastPitch;
     private boolean sprinting, sneaking, digging;
     private int diggingCounter;
     private ItemStack held, helmet, chestplate, leggings, boots;
 
     public TrackedRecordingPlayer(ReplayRecorder recorder, Player player) {
-        trackerId = recorder.GetNextTrackerId();
-        this.recorder = recorder;
+        super(recorder, player);
         this.player = player;
 
         var pos = player.getLocation();
@@ -82,6 +72,7 @@ public class TrackedRecordingPlayer {
         diggingCounter = 0;
     }
 
+    @Override
     public void Update() {
         {
             if (digging) {
@@ -93,28 +84,4 @@ public class TrackedRecordingPlayer {
             }
         }
     }
-
-    public void UpdatePosition(Location newPos) {
-        var x = newPos.getX();
-        var y = newPos.getY();
-        var z = newPos.getZ();
-        var yaw = newPos.getYaw();
-        var pitch = newPos.getPitch();
-
-        var ret = new InstructionPlayerPosition(
-            trackerId, x != lastX ? x : null,
-            y != lastY ? y : null,
-            z != lastZ ? z : null,
-            yaw != lastYaw ? yaw : null,
-            pitch != lastPitch ? pitch : null
-        );
-        lastX = x;
-        lastY = y;
-        lastZ = z;
-        lastYaw = yaw;
-        lastPitch = pitch;
-
-        recorder.ScheduleInstruction(ret);
-    }
-
 }

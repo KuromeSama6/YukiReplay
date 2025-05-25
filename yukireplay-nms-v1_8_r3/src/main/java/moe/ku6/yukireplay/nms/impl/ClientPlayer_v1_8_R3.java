@@ -31,6 +31,11 @@ public class ClientPlayer_v1_8_R3 extends AbstractClientEntity_v1_8_R3 implement
     }
 
     @Override
+    protected Entity GetEntity() {
+        return player;
+    }
+
+    @Override
     protected void SpawnClientEntity(Player viewer) {
         var handle = ((CraftPlayer)viewer).getHandle();
 

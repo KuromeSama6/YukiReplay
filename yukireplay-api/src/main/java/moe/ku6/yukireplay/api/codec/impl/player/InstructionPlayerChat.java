@@ -4,6 +4,7 @@ import lombok.ToString;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.util.CodecUtil;
 
 import java.io.DataOutputStream;
@@ -32,7 +33,7 @@ public class InstructionPlayerChat extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var player = playback.GetTrackedPlayer(trackerId);
+        IPlaybackPlayer player = playback.GetTracked(trackerId);
         var msg = "§3[Replay] %s: §7%s".formatted(player.GetName(), message);
         playback.GetViewers().forEach(c -> c.sendMessage(msg));
     }

@@ -6,8 +6,8 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBl
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.BlockInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import org.bukkit.Location;
-import org.bukkit.entity.Player;
 
 import java.nio.ByteBuffer;
 
@@ -34,7 +34,7 @@ public class InstructionBlockBreakProgress extends BlockInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var tracked = playback.GetTrackedPlayer(trackerId);
+        IPlaybackPlayer tracked = playback.GetTracked(trackerId);
         var packet = new WrapperPlayServerBlockBreakAnimation(tracked.GetClientPlayer().GetEntityId(), new Vector3i(x, y, z), progress);
 
         playback.GetViewers().forEach(c -> PacketEvents.getAPI().getPlayerManager().sendPacket(c, packet));

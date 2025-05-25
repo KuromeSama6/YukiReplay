@@ -1,9 +1,12 @@
 package moe.ku6.yukireplay.api.util;
 
 import lombok.experimental.UtilityClass;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.BitSet;
@@ -62,6 +65,45 @@ public class CodecUtil {
         System.arraycopy(raw, 0, result, 0, Math.min(raw.length, byteLength));
 
         return result;
+    }
+
+    public static PotionEffect ReadPotionEffect(ByteBuffer buf) {
+        int typeId = buf.getInt();
+        int duration = buf.getInt();
+        int amplifier = buf.getInt();
+
+        // particles, ambient (byte flag)
+        byte flag = buf.get();
+        boolean hasParticles = (flag & 0x01) != 0;
+        boolean isAmbient = (flag & 0x02) != 0;
+
+        PotionEffectType type = PotionEffectType.getById(typeId);
+        if (type == null) {
+            throw new IllegalArgumentException("Invalid potion effect type ID: " + typeId);
+        }
+
+        return new PotionEffect(type, duration, amplifier, isAmbient, hasParticles);
+    }
+
+    public static void WritePotionEffect(DataOutputStream out, PotionEffect effect) {
+        try {
+            out.writeInt(effect.getType().getId());
+            out.writeInt(effect.getDuration());
+            out.writeInt(effect.getAmplifier());
+
+            // particles, ambient (byte flag)
+            byte flag = 0;
+            if (effect.hasParticles()) {
+                flag |= 0x01;
+            }
+            if (effect.isAmbient()) {
+                flag |= 0x02;
+            }
+            out.writeByte(flag);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

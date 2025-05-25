@@ -1,8 +1,8 @@
 package moe.ku6.yukireplay.playback;
 
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerFlying;
 import moe.ku6.yukireplay.YukiReplay;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionAddPlayer;
+import moe.ku6.yukireplay.api.nms.GameProfilePropertyWrapper;
 import moe.ku6.yukireplay.api.nms.IClientPlayer;
 import moe.ku6.yukireplay.api.nms.IGameProfile;
 import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
@@ -11,7 +11,7 @@ import org.bukkit.entity.Player;
 
 import java.util.UUID;
 
-public class TrackedPlaybackPlayer extends AbstractTrackedPlaybackEntity implements IPlaybackPlayer {
+public class TrackedPlaybackPlayer extends TrackedPlaybackEntity implements IPlaybackPlayer {
     private final UUID uuid;
     private final String name;
     private final IGameProfile gameProfile;
@@ -19,10 +19,12 @@ public class TrackedPlaybackPlayer extends AbstractTrackedPlaybackEntity impleme
 
     public TrackedPlaybackPlayer(ReplayPlayback playback, InstructionAddPlayer instruction) {
         super(playback, instruction.getTrackerId());
-        uuid = instruction.getUuid();
+//        uuid = instruction.getUuid();
+        uuid = UUID.randomUUID();
         name = instruction.getName();
 
-        gameProfile = YukiReplay.getInstance().getVersionAdaptor().CreateGameProfile(uuid, instruction.getName());
+        gameProfile = YukiReplay.getInstance().getVersionAdaptor().CreateGameProfile(uuid, name);
+        gameProfile.SetProperty("textures", new GameProfilePropertyWrapper("textures", instruction.getSkinValue(), instruction.getSkinSignature()));
         clientPlayer = YukiReplay.getInstance().getVersionAdaptor().CreateClientPlayer(playback.GetWorld(), gameProfile);
     }
 

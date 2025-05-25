@@ -1,16 +1,11 @@
 package moe.ku6.yukireplay.api.codec.impl.player;
 
-import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
-import com.github.retrooper.packetevents.protocol.entity.data.EntityDataType;
-import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityAnimation;
-import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import lombok.ToString;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.util.CodecUtil;
-import org.bukkit.entity.Player;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -52,7 +47,7 @@ public class InstructionPlayerMotionStatus extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var player = playback.GetTrackedPlayer(trackerId);
+        IPlaybackPlayer player = playback.GetTracked(trackerId);
         player.GetClientPlayer().SetSneaking(flag.get(0));
     }
 
