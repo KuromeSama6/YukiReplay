@@ -38,6 +38,7 @@ A valid YREP file must start with a header section. The header section contains 
 
 - Magic (4) - `0d 00 07 21`
 - Version (2) - `short` indicating the version of the YREP format
+- Protocol Version - `length-prefixed string` indicating the server protocol version at the time when the replay was recorded. This is used to ensure compatibility with the server version. Uses a format of v`major`_`minor`_R`patch` (e.g. `v1_8_R3`).
 - Optional metadata length (4) - Length of the following optional metadata section in bytes. If this value is 0, the optional metadata section is not present.
 - Optional metadata(`Optional metadata length`)
   - The optional metadata section is a length-prefixed string that contains additional information about the replay. This is to be set by developers using the YukiReplay API.

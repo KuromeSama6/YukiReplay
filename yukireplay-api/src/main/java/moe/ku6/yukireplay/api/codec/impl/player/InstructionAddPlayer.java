@@ -1,5 +1,9 @@
 package moe.ku6.yukireplay.api.codec.impl.player;
 
+import com.github.retrooper.packetevents.protocol.player.GameMode;
+import com.github.retrooper.packetevents.protocol.player.TextureProperty;
+import com.github.retrooper.packetevents.protocol.player.UserProfile;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfo;
 import lombok.Getter;
 import lombok.ToString;
 import moe.ku6.yukireplay.api.YukiReplayAPI;
@@ -7,11 +11,13 @@ import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
 import moe.ku6.yukireplay.api.util.CodecUtil;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.UUID;
 
 @ToString

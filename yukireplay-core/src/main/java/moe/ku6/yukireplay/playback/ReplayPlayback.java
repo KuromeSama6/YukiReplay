@@ -1,16 +1,22 @@
 package moe.ku6.yukireplay.playback;
 
+import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import lombok.Getter;
 import moe.ku6.yukireplay.YukiReplay;
 import moe.ku6.yukireplay.api.codec.Instruction;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.exception.InvalidMagicException;
 import moe.ku6.yukireplay.api.exception.PlaybackLoadException;
+import moe.ku6.yukireplay.api.exception.ProtocolVersionMismatchException;
 import moe.ku6.yukireplay.api.exception.VersionMismatchException;
+import moe.ku6.yukireplay.api.nms.IVersionAdaptor;
 import moe.ku6.yukireplay.api.playback.IPlayback;
 import moe.ku6.yukireplay.api.playback.IPlaybackEntity;
 import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
+import moe.ku6.yukireplay.api.util.CodecUtil;
 import moe.ku6.yukireplay.api.util.Magic;
+import net.kyori.adventure.util.Codec;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -50,8 +56,15 @@ public class ReplayPlayback implements IPlayback, Listener {
 
         {
             var version = buf.getShort();
-            if (version > Magic.FORMAT_VERSION)
+            if (version != Magic.FORMAT_VERSION)
                 throw new VersionMismatchException(version, Magic.FORMAT_VERSION);
+        }
+
+        {
+            var protocolVersion = CodecUtil.ReadLengthPrefixed(buf);
+            var expectedVersion = IVersionAdaptor.GetNMSVersion();
+            if (!protocolVersion.equalsIgnoreCase(expectedVersion))
+                throw new ProtocolVersionMismatchException(protocolVersion, expectedVersion);
         }
 
         {
@@ -183,6 +196,12 @@ public class ReplayPlayback implements IPlayback, Listener {
     @Override
     public Collection<Player> GetViewers() {
         return viewers;
+    }
+
+    @Override
+    public void SendViewerPacket(PacketWrapper<?> packet) {
+        var mgr = PacketEvents.getAPI().getPlayerManager();
+        viewers.forEach(c -> mgr.sendPacket(c, packet));
     }
 
     @Override

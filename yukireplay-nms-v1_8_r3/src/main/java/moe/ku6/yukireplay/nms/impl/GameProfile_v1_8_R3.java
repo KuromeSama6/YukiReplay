@@ -44,6 +44,11 @@ public class GameProfile_v1_8_R3 implements IGameProfile {
     }
 
     @Override
+    public Map<String, IGameProfileProperty> GetProperties() {
+        return properties;
+    }
+
+    @Override
     public void SetProperty(String key, IGameProfileProperty value) {
         properties.put(key, value);
     }

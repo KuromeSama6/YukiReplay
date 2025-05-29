@@ -1,6 +1,7 @@
 package moe.ku6.yukireplay.nms.impl;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 import moe.ku6.yukireplay.api.nms.GameProfilePropertyWrapper;
 import moe.ku6.yukireplay.api.nms.IClientPlayer;
 import moe.ku6.yukireplay.api.nms.IGameProfile;
@@ -26,6 +27,10 @@ public class ClientPlayer_v1_8_R3 extends AbstractClientEntity_v1_8_R3 implement
         interactManager = new PlayerInteractManager(nmsWorld);
 
         var profile = new GameProfile(gameProfile.getUuid(), gameProfile.getName());
+        for (var prop : gameProfile.GetProperties().keySet()) {
+            var property = gameProfile.GetProperty(prop);
+            profile.getProperties().put(prop, new Property(property.getName(), property.getValue(), property.getSignature()));
+        }
 
         player = new EntityPlayer(server, nmsWorld, profile, interactManager);
     }

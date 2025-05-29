@@ -46,6 +46,4 @@ public abstract class InstructionProjectileSpawn extends EntityInstruction {
         out.writeDouble(velocity.getY());
         out.writeDouble(velocity.getZ());
     }
-
-    protected abstract EntityType GetEntityType();
 }

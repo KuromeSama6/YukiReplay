@@ -1,5 +1,6 @@
 package moe.ku6.yukireplay.api.playback;
 
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -22,4 +23,5 @@ public interface IPlayback {
     int GetPlayhead();
     int GetTotalFrames();
     Collection<Player> GetViewers();
+    void SendViewerPacket(PacketWrapper<?> packet);
 }

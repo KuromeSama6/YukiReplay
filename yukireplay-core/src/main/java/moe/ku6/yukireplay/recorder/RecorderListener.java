@@ -6,17 +6,16 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.InteractionHand;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientAnimation;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientEntityAction;
-import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientInteractEntity;
 import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerDigging;
 import moe.ku6.yukireplay.YukiReplay;
-import moe.ku6.yukireplay.api.codec.impl.block.InstructionBlockBreakProgress;
 import moe.ku6.yukireplay.api.codec.impl.block.InstructionBlockChange;
-import moe.ku6.yukireplay.api.codec.impl.entity.InstructionPotSpawn;
-import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerArmSwing;
-import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerChat;
-import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerDamage;
-import moe.ku6.yukireplay.api.codec.impl.player.InstructionPlayerDeath;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionEntityDespawn;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionItemProjectileSpawn;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionPotionSplash;
+import moe.ku6.yukireplay.api.codec.impl.player.*;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.entity.EnderPearl;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.ThrownPotion;
 import org.bukkit.event.EventHandler;
@@ -26,14 +25,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntitySpawnEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.entity.ProjectileLaunchEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerItemHeldEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.entity.*;
+import org.bukkit.event.player.*;
+import org.bukkit.inventory.ItemStack;
 
 public class RecorderListener implements Listener, PacketListener {
     private final ReplayRecorder recorder;
@@ -132,9 +126,40 @@ public class RecorderListener implements Listener, PacketListener {
 
         if (projectile instanceof ThrownPotion thrownPotion) {
             var trackedEntity = recorder.AddTrackedEntity(projectile);
-            recorder.ScheduleInstruction(new InstructionPotSpawn(trackedEntity.getTrackerId(), tracked.getTrackerId(), thrownPotion));
+            recorder.ScheduleInstruction(new InstructionItemProjectileSpawn(trackedEntity.getTrackerId(), tracked.getTrackerId(), thrownPotion, thrownPotion.getItem()));
             trackedEntity.UpdatePosition();
         }
+
+        if (projectile instanceof EnderPearl pearl) {
+            var trackedEntity = recorder.AddTrackedEntity(projectile);
+            recorder.ScheduleInstruction(new InstructionItemProjectileSpawn(trackedEntity.getTrackerId(), tracked.getTrackerId(), pearl, new ItemStack(Material.ENDER_PEARL)));
+            trackedEntity.UpdatePosition();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void OnPotionSplash(PotionSplashEvent e) {
+        var potion = e.getPotion();
+        var tracked = recorder.GetTrackedEntity(potion);
+        if (tracked == null) return;
+
+        recorder.ScheduleInstruction(new InstructionPotionSplash(tracked.getTrackerId(), potion));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    private void OnProjectileHit(ProjectileHitEvent e) {
+        var entity = e.getEntity();
+        var tracked = recorder.GetTrackedEntity(entity);
+        if (tracked == null) return;
+
+        if (entity instanceof EnderPearl enderPearl && enderPearl.getShooter() instanceof Player shooter) {
+            var trackedThrower = recorder.GetTrackedPlayer(shooter);
+            if (trackedThrower != null) {
+                recorder.ScheduleInstruction(new InstructionPearlTeleport(trackedThrower.getTrackerId(), tracked.getTrackerId(), enderPearl));
+            }
+        }
+
+        recorder.ScheduleInstruction(new InstructionEntityDespawn(tracked.getTrackerId()));
     }
 
     @Override

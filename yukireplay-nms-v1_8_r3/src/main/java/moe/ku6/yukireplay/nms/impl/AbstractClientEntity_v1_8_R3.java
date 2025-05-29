@@ -25,7 +25,7 @@ public abstract class AbstractClientEntity_v1_8_R3 implements IClientEntity {
     protected abstract void SpawnClientEntity(Player viewer);
     protected void DespawnClientEntity(Player viewer) {
         var packet = new PacketPlayOutEntityDestroy(GetEntityId());
-        SendViewerPacket(packet);
+        ((CraftPlayer)viewer).getHandle().playerConnection.sendPacket(packet);
     }
 
     @Override

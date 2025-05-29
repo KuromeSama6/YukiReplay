@@ -6,7 +6,8 @@ import moe.ku6.yukireplay.api.codec.impl.block.InstructionBlockBreakProgress;
 import moe.ku6.yukireplay.api.codec.impl.block.InstructionBlockChange;
 import moe.ku6.yukireplay.api.codec.impl.entity.InstructionEntityDespawn;
 import moe.ku6.yukireplay.api.codec.impl.entity.InstructionEntityPosition;
-import moe.ku6.yukireplay.api.codec.impl.entity.InstructionPotSpawn;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionItemProjectileSpawn;
+import moe.ku6.yukireplay.api.codec.impl.entity.InstructionPotionSplash;
 import moe.ku6.yukireplay.api.codec.impl.player.*;
 
 import java.nio.ByteBuffer;
@@ -27,8 +28,10 @@ public enum InstructionType {
     PLAYER_INVENTORY((short)0x0009, InstructionPlayerInventory.class),
     BLOCK_CHANGE((short)0x000A, InstructionBlockChange.class),
     BLOCK_BREAK_PROGRESS((short)0x000B, InstructionBlockBreakProgress.class),
-    POT_SPAWN((short)0x000C, InstructionPotSpawn.class),
+    ITEM_PROJECTILE_SPAWN((short)0x000C, InstructionItemProjectileSpawn.class),
     ENTITY_DESPAWN((short)0x000D, InstructionEntityDespawn.class),
+    POTION_SPLASH((short)0x000E, InstructionPotionSplash.class),
+    PEARL_TELEPORT((short)0x000F, InstructionPearlTeleport.class),
 
     ;
     private static final Map<Short, InstructionType> map = new HashMap<>();

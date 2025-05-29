@@ -3,13 +3,15 @@ package moe.ku6.yukireplay.nms.impl;
 import moe.ku6.yukireplay.api.nms.IClientPlayer;
 import moe.ku6.yukireplay.api.nms.IGameProfile;
 import moe.ku6.yukireplay.api.nms.IVersionAdaptor;
-import moe.ku6.yukireplay.api.nms.entity.IClientSplashPotion;
+import moe.ku6.yukireplay.api.nms.entity.IClientArmorStand;
 import moe.ku6.yukireplay.api.util.SimpleLocation;
-import net.minecraft.server.v1_8_R3.BlockState;
+import net.minecraft.server.v1_8_R3.BlockPosition;
 import net.minecraft.server.v1_8_R3.MojangsonParseException;
 import net.minecraft.server.v1_8_R3.MojangsonParser;
 import net.minecraft.server.v1_8_R3.NBTTagCompound;
+import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.craftbukkit.v1_8_R3.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
@@ -60,7 +62,14 @@ public class VersionAdaptor_v1_8_R3 implements IVersionAdaptor {
     }
 
     @Override
-    public IClientSplashPotion CreateClientSplashPotion(World world, SimpleLocation pos, ItemStack potionItem) {
-        return new ClientSplashPotion_v1_8_R3(world, pos, potionItem);
+    public IClientArmorStand CreateClientArmorStand(World world, SimpleLocation pos, SimpleLocation offset) {
+        return new ClientArmorStand_v1_8_R3(world, pos, offset);
+    }
+
+    @Override
+    public void PlayPotionSplashEffect(Player viewer, Location pos, ItemStack potion) {
+        var blockPosition = new BlockPosition(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ());
+        var world = ((CraftWorld)pos.getWorld()).getHandle();
+        world.a(((CraftPlayer)viewer).getHandle(), 2002, blockPosition, CraftItemStack.asNMSCopy(potion).getData());
     }
 }

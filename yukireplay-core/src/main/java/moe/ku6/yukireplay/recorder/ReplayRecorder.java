@@ -3,6 +3,7 @@ package moe.ku6.yukireplay.recorder;
 import lombok.Getter;
 import moe.ku6.yukireplay.YukiReplay;
 import moe.ku6.yukireplay.api.codec.impl.entity.InstructionEntityDespawn;
+import moe.ku6.yukireplay.api.nms.IVersionAdaptor;
 import moe.ku6.yukireplay.api.recorder.IRecorder;
 import moe.ku6.yukireplay.api.codec.Instruction;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionAddPlayer;
@@ -10,6 +11,7 @@ import moe.ku6.yukireplay.api.codec.impl.entity.InstructionEntityPosition;
 import moe.ku6.yukireplay.api.codec.impl.player.InstructionRemovePlayer;
 import moe.ku6.yukireplay.api.codec.impl.util.InstructionFrameEnd;
 import moe.ku6.yukireplay.api.recorder.RecorderOptions;
+import moe.ku6.yukireplay.api.util.CodecUtil;
 import moe.ku6.yukireplay.api.util.Magic;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -203,6 +205,7 @@ public class ReplayRecorder implements IRecorder {
             // write headers and metadata
             outputStream.write(Magic.FORMAT_MAGIC);
             outputStream.writeShort(Magic.FORMAT_VERSION);
+            CodecUtil.WriteLengthPrefixed(outputStream, IVersionAdaptor.GetNMSVersion());
             outputStream.writeInt(optionalMetadata.length);
             outputStream.write(optionalMetadata);
 
@@ -305,11 +308,20 @@ public class ReplayRecorder implements IRecorder {
         instructions.add(InstructionFrameEnd.INSTANCE);
     }
 
+    @Override
     public synchronized void ScheduleInstruction(Instruction instruction) {
         EnsureValid();
         Objects.requireNonNull(instruction, "instruction");
 
         scheduledInstructions.add(instruction);
+    }
+
+    @Override
+    public int GetTrackerId(Entity entity) {
+        var ret = trackedEntities.get(entity.getUniqueId());
+        if (ret == null) return -1;
+
+        return ret.getTrackerId();
     }
 
     private void AddTrackedPlayer(Player player) {

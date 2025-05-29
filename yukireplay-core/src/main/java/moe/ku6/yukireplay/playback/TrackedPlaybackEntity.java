@@ -49,7 +49,7 @@ public abstract class TrackedPlaybackEntity implements IPlaybackEntity {
     protected abstract void DespawnOnClient(Player viewer);
 
     @Override
-    public List<Player> Getviewers() {
+    public List<Player> GetViewers() {
         return viewers;
     }
 }

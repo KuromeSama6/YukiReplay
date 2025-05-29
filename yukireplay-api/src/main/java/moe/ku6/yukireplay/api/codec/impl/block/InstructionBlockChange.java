@@ -41,8 +41,7 @@ public class InstructionBlockChange extends BlockInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var block = playback.GetWorld().getBlockAt(x, y, z);
-        block.setType(material);
-        block.setData(blockData);
+        var pos = new Location(playback.GetWorld(), x, y, z);
+        playback.GetViewers().forEach(c -> c.sendBlockChange(pos, material, blockData));
     }
 }

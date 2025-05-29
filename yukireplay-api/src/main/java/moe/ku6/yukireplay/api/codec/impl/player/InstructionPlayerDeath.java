@@ -3,6 +3,9 @@ package moe.ku6.yukireplay.api.codec.impl.player;
 import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
+import com.github.retrooper.packetevents.protocol.player.Equipment;
+import com.github.retrooper.packetevents.protocol.player.EquipmentSlot;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityEquipment;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityStatus;
 import lombok.Getter;
@@ -15,6 +18,7 @@ import org.bukkit.Sound;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class InstructionPlayerDeath extends PlayerInstruction {
@@ -49,13 +53,27 @@ public class InstructionPlayerDeath extends PlayerInstruction {
             return;
         }
 
-        var metadata = new EntityData(6, EntityDataTypes.FLOAT, dead ? 0.0f : 20.0f);
+        if (!dead) {
+            playback.GetViewers().forEach(player.GetClientPlayer()::ForceRefresh);
+            return;
+        }
+
+        // equipment packets
+        var equipments = new ArrayList<Equipment>();
+        for (var slot : EquipmentSlot.values()) {
+            equipments.add(new Equipment(slot, null));
+        }
+        var equipmentPacket = new WrapperPlayServerEntityEquipment(player.GetClientPlayer().GetEntityId(), equipments);
+
+        var metadata = new EntityData(6, EntityDataTypes.FLOAT, 0f);
         var metadataPacket = new WrapperPlayServerEntityMetadata(player.GetClientPlayer().GetEntityId(), List.of(metadata));
 
-        var packet = new WrapperPlayServerEntityStatus(player.GetClientPlayer().GetEntityId(), dead ? 3 : 2);
+        var mgr = PacketEvents.getAPI().getPlayerManager();
+        var packet = new WrapperPlayServerEntityStatus(player.GetClientPlayer().GetEntityId(), 3);
         playback.GetViewers().forEach(c -> {
-            PacketEvents.getAPI().getPlayerManager().sendPacket(c, packet);
-            PacketEvents.getAPI().getPlayerManager().sendPacket(c, metadataPacket);
+            mgr.sendPacket(c, equipmentPacket);
+            mgr.sendPacket(c, packet);
+            mgr.sendPacket(c, metadataPacket);
             c.playSound(player.GetLocation(), Sound.HURT_FLESH, 1f, 1f);
         });
     }
