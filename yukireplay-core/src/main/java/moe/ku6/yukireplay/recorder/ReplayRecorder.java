@@ -273,9 +273,11 @@ public class ReplayRecorder implements IRecorder {
         }
 
         // add in bounds players
-        for (var player : Bukkit.getOnlinePlayers()) {
-            if (!players.contains(player) && chunks.contains(player.getLocation().getChunk())) {
-                AddTrackedPlayer(player);
+        if (options.isAutoAddPlayers()) {
+            for (var player : Bukkit.getOnlinePlayers()) {
+                if (!players.contains(player) && chunks.contains(player.getLocation().getChunk())) {
+                    AddTrackedPlayer(player);
+                }
             }
         }
 
