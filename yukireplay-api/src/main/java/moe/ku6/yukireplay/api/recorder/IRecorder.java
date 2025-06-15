@@ -13,6 +13,7 @@ public interface IRecorder {
     void RemovePlayers(Player... players);
     void StartRecording();
     void StopRecording();
+    boolean IsRecording();
     void SetRecording(boolean recording);
     void Close();
     byte[] Serialize(boolean flush) throws IOException;

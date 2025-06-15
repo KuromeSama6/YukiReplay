@@ -149,6 +149,11 @@ public class ReplayRecorder implements IRecorder {
     }
 
     @Override
+    public boolean IsRecording() {
+        return recording;
+    }
+
+    @Override
     public void SetRecording(boolean recording) {
         EnsureValid();
         if (this.recording == recording) return;
