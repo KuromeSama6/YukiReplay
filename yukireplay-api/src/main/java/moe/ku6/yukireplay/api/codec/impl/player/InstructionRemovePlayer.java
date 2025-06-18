@@ -1,6 +1,7 @@
 package moe.ku6.yukireplay.api.codec.impl.player;
 
 import lombok.ToString;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeEnd;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
@@ -14,7 +15,7 @@ import java.nio.ByteBuffer;
 import java.util.UUID;
 
 @ToString
-public class InstructionRemovePlayer extends PlayerInstruction {
+public class InstructionRemovePlayer extends PlayerInstruction implements IEntityLifetimeEnd {
     private final UUID uuid;
     public InstructionRemovePlayer(ByteBuffer buf) {
         super(buf);
@@ -34,10 +35,6 @@ public class InstructionRemovePlayer extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        IPlaybackPlayer player = playback.GetTracked(trackerId);
-        if (player != null) {
-            playback.RemoveTrackedPlayer(player);
-        }
     }
 
     @Override
@@ -46,4 +43,8 @@ public class InstructionRemovePlayer extends PlayerInstruction {
     }
 
 
+    @Override
+    public int GetTrackerId() {
+        return trackerId;
+    }
 }

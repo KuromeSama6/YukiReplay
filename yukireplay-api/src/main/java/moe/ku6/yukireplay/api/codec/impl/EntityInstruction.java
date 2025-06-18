@@ -28,6 +28,6 @@ public abstract class EntityInstruction extends Instruction {
 
     @Override
     public String toString() {
-        return "PlayerInstruction(id=%s, ???)".formatted(trackerId);
+        return "EntityInstruction[%s](id=%s, ???)".formatted(getClass().getName(), trackerId);
     }
 }

@@ -2,6 +2,7 @@ package moe.ku6.yukireplay.nms.impl;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
+import moe.ku6.yukireplay.api.YukiReplayAPI;
 import moe.ku6.yukireplay.api.nms.GameProfilePropertyWrapper;
 import moe.ku6.yukireplay.api.nms.IClientPlayer;
 import moe.ku6.yukireplay.api.nms.IGameProfile;
@@ -13,6 +14,9 @@ import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
 import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
+
+import java.util.List;
+import java.util.UUID;
 
 public class ClientPlayer_v1_8_R3 extends AbstractClientEntity_v1_8_R3 implements IClientPlayer {
     private final PlayerInteractManager interactManager;
@@ -111,6 +115,28 @@ public class ClientPlayer_v1_8_R3 extends AbstractClientEntity_v1_8_R3 implement
     @Override
     public void SetHealth(float health) {
         player.setHealth(health);
+    }
+
+    @Override
+    public int PlayDeathAnimation() {// fake death packet
+        var pos = GetLocation();
+        var profile = new GameProfile(UUID.randomUUID(), "");
+        profile.getProperties().putAll("textures", player.getProfile().getProperties().get("textures"));
+        var world = player.world.getWorld().getHandle();
+        var entityPlayer = new EntityPlayer(((CraftServer)Bukkit.getServer()).getServer(), world, profile, new PlayerInteractManager(world));
+        entityPlayer.setLocation(pos.getX(), pos.getY(), pos.getZ(), pos.getYaw(), pos.getPitch());
+        var playerListPacket = new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER, entityPlayer);
+
+        SendViewerPacket(playerListPacket);
+        SendViewerPacket(new PacketPlayOutNamedEntitySpawn(entityPlayer));
+        SendViewerPacket(new PacketPlayOutEntityMetadata());
+
+
+        Bukkit.getScheduler().scheduleSyncDelayedTask(YukiReplayAPI.Get().GetProvidingPlugin(), () -> {
+            SendViewerPacket(new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer));
+            SendViewerPacket(new PacketPlayOutEntityDestroy(entityPlayer.getId()));
+        }, 20);
+        return entityPlayer.getId();
     }
 
 }

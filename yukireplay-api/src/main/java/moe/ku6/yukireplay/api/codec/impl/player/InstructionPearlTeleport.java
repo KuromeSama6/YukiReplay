@@ -51,8 +51,6 @@ public class InstructionPearlTeleport extends PlayerInstruction {
 
     @Override
     public void Apply(IPlayback playback) {
-        var tracked = playback.GetTracked(pearlTrackerId);
-        if (tracked != null) playback.RemoveTrackedEntity(tracked);
         var world = playback.GetWorld();
         var pos = new Location(world, posX, posY, posZ);
 

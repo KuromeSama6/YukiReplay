@@ -14,6 +14,8 @@ public interface IPlaybackEntity {
     void SpawnFor(Player player);
     void DespawnFor(Player player);
     List<Player> GetViewers();
+    void SetLifetime(EntityLifetime lifetime);
+    void Tick(int frame);
 
     default void Remove() {
         for (Player player : new ArrayList<>(GetViewers())) {

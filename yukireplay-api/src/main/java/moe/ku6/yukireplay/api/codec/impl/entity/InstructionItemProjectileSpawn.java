@@ -6,8 +6,10 @@ import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSoundEffect;
 import lombok.Getter;
 import moe.ku6.yukireplay.api.YukiReplayAPI;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeStart;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackEntity;
 import moe.ku6.yukireplay.api.util.CodecUtil;
 import org.bukkit.Sound;
 import org.bukkit.entity.Projectile;
@@ -17,7 +19,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class InstructionItemProjectileSpawn extends InstructionProjectileSpawn {
+public class InstructionItemProjectileSpawn extends InstructionProjectileSpawn implements IEntityLifetimeStart {
     @Getter
     private final ItemStack item;
 
@@ -41,16 +43,24 @@ public class InstructionItemProjectileSpawn extends InstructionProjectileSpawn {
         var adapter = YukiReplayAPI.Get().GetVersionAdaptor();
         CodecUtil.WriteLengthPrefixed(out, adapter.SerializeItemStack(item));
     }
+
+    @Override
+    public IPlaybackEntity CreateEntity(IPlayback playback) {
+        return YukiReplayAPI.Get().CreateItemProjectile(playback, this);
+    }
+
     @Override
     public void Apply(IPlayback playback) {
-        var proj = YukiReplayAPI.Get().CreateItemProjectile(playback, this);
-        playback.AddTrackedEntity(proj);
-
         playback.GetViewers().forEach(c -> c.playSound(location.ToBukkitLocation(playback.GetWorld()), Sound.SHOOT_ARROW, 1f, 0.5f));
     }
 
     @Override
     public InstructionType GetType() {
         return InstructionType.ITEM_PROJECTILE_SPAWN;
+    }
+
+    @Override
+    public int GetTrackerId() {
+        return trackerId;
     }
 }

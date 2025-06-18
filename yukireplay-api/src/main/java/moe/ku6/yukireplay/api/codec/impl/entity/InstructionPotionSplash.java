@@ -71,7 +71,5 @@ public class InstructionPotionSplash extends EntityInstruction {
         playback.SendViewerPacket(new WrapperPlayServerSoundEffect(Sounds.ENTITY_SPLASH_POTION_BREAK, SoundCategory.NEUTRAL, new Vector3i((int) posX, (int) posY, (int) posZ), 1f, 1f));
 
         playback.GetViewers().forEach(c -> YukiReplayAPI.Get().GetVersionAdaptor().PlayPotionSplashEffect(c, pos, entity.GetItem()));
-
-        playback.RemoveTrackedEntity(entity);
     }
 }

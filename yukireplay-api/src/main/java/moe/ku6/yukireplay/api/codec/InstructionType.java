@@ -32,6 +32,7 @@ public enum InstructionType {
     ENTITY_DESPAWN((short)0x000D, InstructionEntityDespawn.class),
     POTION_SPLASH((short)0x000E, InstructionPotionSplash.class),
     PEARL_TELEPORT((short)0x000F, InstructionPearlTeleport.class),
+    PLAYER_RESPAWN((short)0x0010, InstructionPlayerRespawn.class),
 
     ;
     private static final Map<Short, InstructionType> map = new HashMap<>();

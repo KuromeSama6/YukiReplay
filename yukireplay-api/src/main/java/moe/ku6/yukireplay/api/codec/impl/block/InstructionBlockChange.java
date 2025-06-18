@@ -44,4 +44,10 @@ public class InstructionBlockChange extends BlockInstruction {
         var pos = new Location(playback.GetWorld(), x, y, z);
         playback.GetViewers().forEach(c -> c.sendBlockChange(pos, material, blockData));
     }
+
+    @Override
+    public void Rewind(IPlayback playback) {
+        var pos = new Location(playback.GetWorld(), x, y, z);
+        playback.GetViewers().forEach(c -> c.sendBlockChange(pos, Material.AIR, (byte) 0));
+    }
 }

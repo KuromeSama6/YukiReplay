@@ -1,9 +1,14 @@
 package moe.ku6.yukireplay.playback;
 
 import com.github.retrooper.packetevents.PacketEvents;
+import com.github.retrooper.packetevents.event.PacketListener;
+import com.github.retrooper.packetevents.event.PacketListenerCommon;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import lombok.Getter;
 import moe.ku6.yukireplay.YukiReplay;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeEnd;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeStart;
 import moe.ku6.yukireplay.api.codec.Instruction;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.exception.InvalidMagicException;
@@ -11,13 +16,16 @@ import moe.ku6.yukireplay.api.exception.PlaybackLoadException;
 import moe.ku6.yukireplay.api.exception.ProtocolVersionMismatchException;
 import moe.ku6.yukireplay.api.exception.VersionMismatchException;
 import moe.ku6.yukireplay.api.nms.IVersionAdaptor;
+import moe.ku6.yukireplay.api.playback.EntityLifetime;
 import moe.ku6.yukireplay.api.playback.IPlayback;
 import moe.ku6.yukireplay.api.playback.IPlaybackEntity;
 import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.util.CodecUtil;
 import moe.ku6.yukireplay.api.util.Magic;
-import net.kyori.adventure.util.Codec;
+import moe.ku6.yukireplay.api.util.Vec2i;
+import moe.ku6.yukireplay.playback.block.TrackedBlockChange;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
@@ -28,7 +36,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-public class ReplayPlayback implements IPlayback, Listener {
+public class ReplayPlayback implements IPlayback, Listener, PacketListener {
     private final World world;
     @Getter
     private final byte[] metadata;
@@ -36,9 +44,13 @@ public class ReplayPlayback implements IPlayback, Listener {
     private final List<Integer> schedulerHandles = new ArrayList<>();
     private final Set<Player> viewers = new HashSet<>();
     private final Map<Integer, TrackedPlaybackEntity> tracked = new HashMap<>();
+    private final Map<Location, TrackedBlockChange> blockChanges = new HashMap<>();
     private int playhead = 0;
+    private double extraFramesCounter = 0;
+    private double speed = 1d;
     private boolean closed;
-    private boolean playing;
+    private boolean playing, rewind;
+    private final PacketListenerCommon packetListenerHandle;
 
     public ReplayPlayback(World world, byte[] data) throws PlaybackLoadException {
         this.world = world;
@@ -77,6 +89,10 @@ public class ReplayPlayback implements IPlayback, Listener {
         // start of data
         int frameNumber = 1;
 
+        // lifetime computation
+        var openLifetimePeriods = new HashMap<Integer, Integer>();
+        var lifetimes = new HashMap<Integer, EntityLifetime>();
+
         while (buf.hasRemaining()) {
             int frame = buf.getInt();
             if (frame != frameNumber)
@@ -96,14 +112,58 @@ public class ReplayPlayback implements IPlayback, Listener {
 
                 var instruction = type.CreateInstance(payload);
                 instructions.add(instruction);
+
+                // lifetime computation
+                if (instruction instanceof IEntityLifetimeStart lifetimeStart) {
+                    var trackerId = lifetimeStart.GetTrackerId();
+                    if (openLifetimePeriods.containsKey(trackerId))
+                        throw new PlaybackLoadException("Entity %d has overlapping lifetime periods: last started at %d, new started at %d".formatted(trackerId, openLifetimePeriods.get(trackerId), frame));
+
+                    openLifetimePeriods.put(trackerId, frame);
+                    if (!lifetimes.containsKey(trackerId)) {
+                        AddTrackedEntity(lifetimeStart.CreateEntity(this));
+                    }
+                }
+
+                if (instruction instanceof IEntityLifetimeEnd lifetimeEnd) {
+                    var trackerId = lifetimeEnd.GetTrackerId();
+                    if (!openLifetimePeriods.containsKey(trackerId)) {
+//                        YukiReplay.getInstance().getLog().warning("Skipping entity %s's lifetime period end on %d - no start found (%s)".formatted(trackerId, frame, lifetimeEnd));
+                        continue;
+                    }
+
+                    var start = openLifetimePeriods.remove(trackerId);
+
+                    var lifetime = lifetimes.computeIfAbsent(trackerId, a -> new EntityLifetime());
+                    lifetime.AddPeriod(start, frame);
+                }
+
             }
 
             frames.add(instructions);
             ++frameNumber;
         }
 
+        // close unfinished lifetimes
+        for (var entry : openLifetimePeriods.entrySet()) {
+            var trackerId = entry.getKey();
+            var startFrame = entry.getValue();
+//            YukiReplay.getInstance().getLog().warning("Closing entity %s's lifetime period on %d - no end found".formatted(trackerId, frameNumber));
+            var lifetime = lifetimes.computeIfAbsent(trackerId, a -> new EntityLifetime());
+            lifetime.AddPeriod(startFrame, frameNumber);
+        }
+
+        for (var trackerId : lifetimes.keySet()) {
+            var entity = GetTracked(trackerId);
+            if (entity != null) {
+                entity.SetLifetime(lifetimes.get(trackerId));
+            }
+        }
+
+
         schedulerHandles.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(YukiReplay.getInstance(), this::Update, 0, 1));
         Bukkit.getPluginManager().registerEvents(this, YukiReplay.getInstance());
+        packetListenerHandle = PacketEvents.getAPI().getEventManager().registerListener(this, PacketListenerPriority.HIGH);
     }
 
     @Override
@@ -112,8 +172,8 @@ public class ReplayPlayback implements IPlayback, Listener {
         viewers.addAll(Arrays.asList(players));
 
         for (var player : players) {
-            for (var trackedPlayer : tracked.values()) {
-                trackedPlayer.SpawnFor(player);
+            for (var entity : tracked.values()) {
+                if (entity.getLifetime().IsAlive(Math.max(playhead, 1))) entity.SpawnFor(player);
             }
         }
     }
@@ -138,6 +198,14 @@ public class ReplayPlayback implements IPlayback, Listener {
     }
 
     @Override
+    public List<IPlaybackPlayer> GetTrackedPlayers() {
+        return tracked.values().stream()
+            .filter(c -> c instanceof IPlaybackPlayer)
+            .map(c -> (IPlaybackPlayer) c)
+            .toList();
+    }
+
+    @Override
     public void AddTrackedEntity(IPlaybackEntity entity) {
         EnsureValid();
         if (tracked.containsKey(entity.GetTrackerId())) {
@@ -147,28 +215,11 @@ public class ReplayPlayback implements IPlayback, Listener {
             throw new IllegalArgumentException("Entity must be an instance of TrackedPlaybackEntity");
         }
         tracked.put(entity.GetTrackerId(), trackedEntity);
-        viewers.forEach(trackedEntity::SpawnFor);
     }
 
     @Override
     public void AddTrackedPlayer(IPlaybackPlayer player) {
         AddTrackedEntity(player);
-    }
-
-    @Override
-    public void RemoveTrackedEntity(IPlaybackEntity entity) {
-        EnsureValid();
-        if (!(entity instanceof TrackedPlaybackEntity trackedEntity)) {
-            throw new IllegalArgumentException("Entity must be an instance of TrackedPlaybackEntity");
-        }
-        tracked.remove(trackedEntity.GetTrackerId());
-        entity.Remove();
-        viewers.forEach(trackedEntity::DespawnFor);
-    }
-
-    @Override
-    public void RemoveTrackedPlayer(IPlaybackPlayer player) {
-        RemoveTrackedEntity(player);
     }
 
     @Override
@@ -205,25 +256,126 @@ public class ReplayPlayback implements IPlayback, Listener {
     }
 
     @Override
+    public double GetSpeed() {
+        return speed;
+    }
+
+    @Override
+    public void SetSpeed(double speed) {
+        EnsureValid();
+        if (speed <= 0) {
+            throw new IllegalArgumentException("Speed must be greater than 0");
+        }
+        extraFramesCounter = 0;
+        this.speed = speed;
+    }
+
+    @Override
+    public boolean IsRewinding() {
+        return rewind;
+    }
+
+    @Override
+    public void SetRewinding(boolean rewinding) {
+        rewind = rewinding;
+    }
+
+    @Override
     public World GetWorld() {
         return world;
+    }
+
+    private void AdvancePlayback() {
+        if (rewind) RewindPlayback();
+        else StepPlayback();
     }
 
     @Override
     public void StepPlayback() {
         EnsureValid();
         if (playhead >= frames.size()) return;
-        ++playhead;
 
 //        System.out.println("playhead: " + playhead);
-        for (var instruction : frames.get(playhead - 1)) {
+        for (var instruction : frames.get(playhead)) {
             instruction.Apply(this);
+        }
+
+        TickEntities();
+        ++playhead;
+    }
+
+    @Override
+    public void RewindPlayback() {
+        EnsureValid();
+        if (playhead <= 1) return; // cant rewind before the first frame
+        --playhead;
+
+//        System.out.println("playhead: " + playhead);
+        for (var instruction : frames.get(playhead)) {
+            instruction.Rewind(this);
+        }
+
+        TickEntities();
+    }
+
+    @Override
+    public void Restart() {
+        EnsureValid();
+        playhead = 1;
+        StepPlayback();
+        playing = false;
+    }
+
+    private void TickEntities() {
+        for (var tracked : tracked.values()) {
+            try {
+                tracked.Tick(playhead);
+            } catch (Exception e) {
+                YukiReplay.getInstance().getLog().warning("Error ticking entity %s at frame %d: %s".formatted(tracked.GetTrackerId(), playhead, e.getMessage()));
+                e.printStackTrace();
+            }
         }
     }
 
     private void Update() {
         if (!playing) return;
-        StepPlayback();
+
+        if (speed < 1) {
+            double framesToSkipPerFrame = 1.0 - speed;
+
+            extraFramesCounter += framesToSkipPerFrame;
+
+            boolean skipThisFrame = false;
+            if (extraFramesCounter >= 1.0) {
+                extraFramesCounter -= 1.0;
+                skipThisFrame = true;
+            }
+
+            if (!skipThisFrame) {
+                AdvancePlayback(); // Only advance if not skipping this frame
+            }
+
+        } else if (speed > 1) {
+            // fast-forward
+            double extraFramesPerFrame = speed - 1.0;
+
+            // Accumulate fractional frames
+            extraFramesCounter += extraFramesPerFrame;
+
+            boolean showExtra = false;
+            if (extraFramesCounter >= 1.0) {
+                extraFramesCounter -= 1.0;
+                showExtra = true;
+            }
+
+            AdvancePlayback();
+            if (showExtra) AdvancePlayback();
+
+        } else {
+            // normal speed
+            AdvancePlayback();
+        }
+
         if (playhead >= frames.size()) {
             playing = false;
         }
@@ -241,6 +393,7 @@ public class ReplayPlayback implements IPlayback, Listener {
         schedulerHandles.forEach(c -> Bukkit.getScheduler().cancelTask(c));
         schedulerHandles.clear();
         HandlerList.unregisterAll(this);
+        PacketEvents.getAPI().getEventManager().unregisterListener(packetListenerHandle);
     }
 
     private void EnsureValid() {

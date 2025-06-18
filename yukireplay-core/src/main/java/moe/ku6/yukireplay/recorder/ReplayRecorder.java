@@ -33,6 +33,7 @@ import java.util.*;
 public class ReplayRecorder implements IRecorder {
     private static int nextTrackerId = 128;
     private final YukiReplay plugin = YukiReplay.getInstance();
+    @Getter
     private final RecorderOptions options;
     private final World world;
     private final List<Integer> schedulerHandles = new ArrayList<>();
@@ -43,6 +44,7 @@ public class ReplayRecorder implements IRecorder {
     private final Map<UUID, TrackedRecordingEntity> trackedEntities = new HashMap<>();
     private final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
     private final RecorderListener listener;
+    private final BlockChangeWatcher blockChangeWatcher;
     @Getter
     private boolean closed;
     @Getter
@@ -66,6 +68,7 @@ public class ReplayRecorder implements IRecorder {
         instructions = new ArrayList<>(options.getInitialSize());
 
         listener = new RecorderListener(this);
+        blockChangeWatcher = new BlockChangeWatcher(this);
         schedulerHandles.add(Bukkit.getScheduler().scheduleSyncRepeatingTask(plugin, this::Update, 0, 1));
     }
 
@@ -169,6 +172,7 @@ public class ReplayRecorder implements IRecorder {
         if (closed) return;
         closed = true;
         listener.Close();
+        blockChangeWatcher.Close();
         schedulerHandles.forEach(Bukkit.getScheduler()::cancelTask);
         schedulerHandles.clear();
         players.clear();

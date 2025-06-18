@@ -1,6 +1,7 @@
 package moe.ku6.yukireplay.api.codec.impl.entity;
 
 import lombok.Getter;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeStart;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.EntityInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
@@ -16,7 +17,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 @Getter
-public abstract class InstructionProjectileSpawn extends EntityInstruction {
+public abstract class InstructionProjectileSpawn extends EntityInstruction implements IEntityLifetimeStart {
     protected final int launcherId;
     protected final SimpleLocation location;
     protected final Vector velocity;

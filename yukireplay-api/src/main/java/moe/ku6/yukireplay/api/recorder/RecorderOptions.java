@@ -32,6 +32,12 @@ public class RecorderOptions {
     @Builder.Default
     private boolean autoRemoveOfflinePlayers = true;
 
+    @Builder.Default
+    /**
+     * Whether to automatically add respawn instructions when PlayerRespawnEvent is fired.
+     */
+    private boolean autoAddRespawn = true;
+
     public static RecorderOptions Default() {
         return RecorderOptions.builder().build();
     }

@@ -66,14 +66,15 @@ public class RecorderListener implements Listener, PacketListener {
     private void OnDeath(PlayerDeathEvent e) {
         var tracked = recorder.GetTrackedPlayer(e.getEntity());
         if (tracked == null) return;
-        recorder.ScheduleInstruction(new InstructionPlayerDeath(tracked.getTrackerId(), true));
+        recorder.ScheduleInstruction(new InstructionPlayerDeath(tracked.getTrackerId()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     private void OnRespawn(PlayerRespawnEvent e) {
+        if (!recorder.getOptions().isAutoAddRespawn()) return;
         var tracked = recorder.GetTrackedPlayer(e.getPlayer());
         if (tracked == null) return;
-        recorder.ScheduleInstruction(new InstructionPlayerDeath(tracked.getTrackerId(), false));
+        recorder.ScheduleInstruction(new InstructionPlayerDeath(tracked.getTrackerId()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -144,6 +145,7 @@ public class RecorderListener implements Listener, PacketListener {
         if (tracked == null) return;
 
         recorder.ScheduleInstruction(new InstructionPotionSplash(tracked.getTrackerId(), potion));
+        recorder.ScheduleInstruction(new InstructionEntityDespawn(tracked.getTrackerId()));
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

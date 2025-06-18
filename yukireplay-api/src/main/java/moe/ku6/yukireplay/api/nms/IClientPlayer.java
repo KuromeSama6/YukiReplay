@@ -7,4 +7,5 @@ public interface IClientPlayer extends IClientEntity {
     void SetSkin(String value, String signature);
     void SetSneaking(boolean sneaking);
     void SetHealth(float health);
+    int PlayDeathAnimation();
 }

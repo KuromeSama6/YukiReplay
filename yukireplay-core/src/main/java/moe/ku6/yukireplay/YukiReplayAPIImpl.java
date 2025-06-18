@@ -11,15 +11,22 @@ import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.playback.IPlaybackItemProjectile;
 import moe.ku6.yukireplay.api.recorder.IRecorder;
 import moe.ku6.yukireplay.api.recorder.RecorderOptions;
+import moe.ku6.yukireplay.api.playback.EntityLifetime;
 import moe.ku6.yukireplay.playback.ReplayPlayback;
 import moe.ku6.yukireplay.playback.TrackedPlaybackPlayer;
 import moe.ku6.yukireplay.playback.entity.TrackedPlaybackItemProjectile;
 import moe.ku6.yukireplay.recorder.ReplayRecorder;
 import org.bukkit.World;
+import org.bukkit.plugin.java.JavaPlugin;
 
 @AllArgsConstructor
 public class YukiReplayAPIImpl implements IYukiReplayAPI {
     private final YukiReplay plugin;
+
+    @Override
+    public JavaPlugin GetProvidingPlugin() {
+        return plugin;
+    }
 
     @Override
     public IVersionAdaptor GetVersionAdaptor() {

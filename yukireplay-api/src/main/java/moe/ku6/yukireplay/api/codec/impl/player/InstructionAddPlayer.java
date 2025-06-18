@@ -7,9 +7,12 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPl
 import lombok.Getter;
 import lombok.ToString;
 import moe.ku6.yukireplay.api.YukiReplayAPI;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeEnd;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeStart;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackEntity;
 import moe.ku6.yukireplay.api.util.CodecUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
@@ -21,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 @ToString
-public class InstructionAddPlayer extends PlayerInstruction {
+public class InstructionAddPlayer extends PlayerInstruction implements IEntityLifetimeStart {
     @Getter
     private final UUID uuid;
     @Getter
@@ -59,10 +62,13 @@ public class InstructionAddPlayer extends PlayerInstruction {
     }
 
     @Override
+    public IPlaybackEntity CreateEntity(IPlayback playback) {
+        return YukiReplayAPI.Get().CreatePlaybackPlayer(playback, this);
+    }
+
+    @Override
     public void Apply(IPlayback playback) {
 //        System.out.println("add player, " + this);
-        var trackedPlayer = YukiReplayAPI.Get().CreatePlaybackPlayer(playback, this);
-        playback.AddTrackedPlayer(trackedPlayer);
     }
 
     @Override
@@ -72,5 +78,10 @@ public class InstructionAddPlayer extends PlayerInstruction {
         CodecUtil.WriteLengthPrefixed(out, name);
         CodecUtil.WriteLengthPrefixed(out, skinValue);
         CodecUtil.WriteLengthPrefixed(out, skinSignature);
+    }
+
+    @Override
+    public int GetTrackerId() {
+        return trackerId;
     }
 }

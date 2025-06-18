@@ -8,11 +8,13 @@ import com.github.retrooper.packetevents.protocol.player.EquipmentSlot;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityEquipment;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityStatus;
-import lombok.Getter;
+import moe.ku6.yukireplay.api.YukiReplayAPI;
 import moe.ku6.yukireplay.api.codec.IEntityLifetimeEnd;
+import moe.ku6.yukireplay.api.codec.IEntityLifetimeStart;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.codec.impl.PlayerInstruction;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.playback.IPlaybackEntity;
 import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
@@ -23,18 +25,18 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class InstructionPlayerDeath extends PlayerInstruction implements IEntityLifetimeEnd {
-    public InstructionPlayerDeath(ByteBuffer buf) {
+public class InstructionPlayerRespawn extends PlayerInstruction implements IEntityLifetimeStart {
+    public InstructionPlayerRespawn(ByteBuffer buf) {
         super(buf);
     }
 
-    public InstructionPlayerDeath(int trackerId) {
+    public InstructionPlayerRespawn(int trackerId) {
         super(trackerId);
     }
 
     @Override
     public InstructionType GetType() {
-        return InstructionType.PLAYER_DEATH;
+        return InstructionType.PLAYER_RESPAWN;
     }
 
     @Override
@@ -48,20 +50,18 @@ public class InstructionPlayerDeath extends PlayerInstruction implements IEntity
         if (player == null) {
             return;
         }
-        var mgr = PacketEvents.getAPI().getPlayerManager();
+        playback.GetViewers().forEach(player.GetClientPlayer()::ForceRefresh);
 
-        var eid = player.GetClientPlayer().PlayDeathAnimation();
-
-        var healthData = new EntityData(6, EntityDataTypes.FLOAT, 0f);
-        var healthPacket = new WrapperPlayServerEntityMetadata(eid, List.of(healthData));
-        playback.GetViewers().forEach(c -> {
-            mgr.sendPacket(c, healthPacket);
-            c.playSound(player.GetLocation(), Sound.HURT_FLESH, 1f, 1f);
-        });
+        Bukkit.getScheduler().scheduleSyncDelayedTask(YukiReplayAPI.Get().GetProvidingPlugin(),  player::RefreshInventory, 2);
     }
 
     @Override
     public int GetTrackerId() {
         return trackerId;
+    }
+
+    @Override
+    public IPlaybackEntity CreateEntity(IPlayback playback) {
+        throw new UnsupportedOperationException("Player respawn does not create an entity.");
     }
 }

@@ -56,15 +56,12 @@ public class InstructionPlayerInventory extends PlayerInstruction {
     @Override
     public void Apply(IPlayback playback) {
         IPlaybackPlayer player = playback.GetTracked(trackerId);
-
-        var equipments = List.of(new Equipment(slot.equipmentSlot, SpigotConversionUtil.fromBukkitItemStack(item)));
-
-        var packet = new WrapperPlayServerEntityEquipment(player.GetClientPlayer().GetEntityId(), equipments);
-
-        playback.GetViewers().forEach(c -> PacketEvents.getAPI().getPlayerManager().sendPacket(c, packet));
+        player.SetInventory(slot, item);
+        player.RefreshInventory();
     }
 
     @AllArgsConstructor
+    @Getter
     public enum Slot {
         MAINHAND(EquipmentSlot.MAIN_HAND),
         HELMET(EquipmentSlot.HELMET),

@@ -17,6 +17,9 @@ public abstract class Instruction {
     public abstract InstructionType GetType();
     public abstract void Serialize(DataOutputStream out) throws IOException;
     public abstract void Apply(IPlayback playback);
+    public void Rewind(IPlayback playback) {
+        Apply(playback); // implementation is optional, default is to reapply the instruction
+    }
 
     @Override
     public String toString() {
