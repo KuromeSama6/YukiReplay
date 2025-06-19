@@ -78,30 +78,6 @@ public class RecorderListener implements Listener, PacketListener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    private void BlockPlaceEvent(BlockPlaceEvent e) {
-        var pos = e.getBlockPlaced().getLocation();
-        Bukkit.getScheduler().scheduleSyncDelayedTask(YukiReplay.getInstance(), () -> recorder.ScheduleInstruction(new InstructionBlockChange(pos)), 1);
-
-        if (!e.isCancelled()) {
-            var tracked = recorder.GetTrackedPlayer(e.getPlayer());
-            if (tracked == null) return;
-            recorder.ScheduleInstruction(new InstructionPlayerArmSwing(tracked.getTrackerId()));
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    private void OnBlockBreak(BlockBreakEvent e) {
-        var pos = e.getBlock().getLocation();
-        Bukkit.getScheduler().scheduleSyncDelayedTask(YukiReplay.getInstance(), () -> recorder.ScheduleInstruction(new InstructionBlockChange(pos)), 1);
-
-        if (!e.isCancelled()) {
-            var tracked = recorder.GetTrackedPlayer(e.getPlayer());
-            if (tracked == null) return;
-            recorder.ScheduleInstruction(new InstructionPlayerArmSwing(tracked.getTrackerId()));
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
     private void OnBlockDamage(BlockDamageEvent e) {
         var pos = e.getBlock().getLocation();
         var tracked = recorder.GetTrackedPlayer(e.getPlayer());

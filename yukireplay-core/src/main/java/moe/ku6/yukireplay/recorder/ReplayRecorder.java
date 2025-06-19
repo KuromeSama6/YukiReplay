@@ -35,6 +35,7 @@ public class ReplayRecorder implements IRecorder {
     private final YukiReplay plugin = YukiReplay.getInstance();
     @Getter
     private final RecorderOptions options;
+    @Getter
     private final World world;
     private final List<Integer> schedulerHandles = new ArrayList<>();
     private final Set<Player> players = new HashSet<>();
@@ -310,6 +311,10 @@ public class ReplayRecorder implements IRecorder {
             }
         }
 
+        if (frame % 10 == 0) {
+            blockChangeWatcher.CheckTrackedChanges();
+        }
+
         ++frame;
         while (!scheduledInstructions.isEmpty()) {
             var instruction = scheduledInstructions.poll();
@@ -321,6 +326,7 @@ public class ReplayRecorder implements IRecorder {
 
     @Override
     public synchronized void ScheduleInstruction(Instruction instruction) {
+        if (closed) return;
         EnsureValid();
         Objects.requireNonNull(instruction, "instruction");
 

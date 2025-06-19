@@ -4,13 +4,14 @@ import com.github.retrooper.packetevents.PacketEvents;
 import com.github.retrooper.packetevents.event.PacketListener;
 import com.github.retrooper.packetevents.event.PacketListenerCommon;
 import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketReceiveEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.protocol.packettype.PacketTypeCommon;
 import com.github.retrooper.packetevents.wrapper.PacketWrapper;
+import com.github.retrooper.packetevents.wrapper.play.client.WrapperPlayClientPlayerBlockPlacement;
 import lombok.Getter;
 import moe.ku6.yukireplay.YukiReplay;
-import moe.ku6.yukireplay.api.codec.IEntityLifetimeEnd;
-import moe.ku6.yukireplay.api.codec.IEntityLifetimeStart;
-import moe.ku6.yukireplay.api.codec.Instruction;
-import moe.ku6.yukireplay.api.codec.InstructionType;
+import moe.ku6.yukireplay.api.codec.*;
 import moe.ku6.yukireplay.api.exception.InvalidMagicException;
 import moe.ku6.yukireplay.api.exception.PlaybackLoadException;
 import moe.ku6.yukireplay.api.exception.ProtocolVersionMismatchException;
@@ -22,8 +23,8 @@ import moe.ku6.yukireplay.api.playback.IPlaybackEntity;
 import moe.ku6.yukireplay.api.playback.IPlaybackPlayer;
 import moe.ku6.yukireplay.api.util.CodecUtil;
 import moe.ku6.yukireplay.api.util.Magic;
-import moe.ku6.yukireplay.api.util.Vec2i;
-import moe.ku6.yukireplay.playback.block.TrackedBlockChange;
+import moe.ku6.yukireplay.api.util.Vec3i;
+import moe.ku6.yukireplay.recorder.block.TrackedBlockChange;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -44,7 +45,7 @@ public class ReplayPlayback implements IPlayback, Listener, PacketListener {
     private final List<Integer> schedulerHandles = new ArrayList<>();
     private final Set<Player> viewers = new HashSet<>();
     private final Map<Integer, TrackedPlaybackEntity> tracked = new HashMap<>();
-    private final Map<Location, TrackedBlockChange> blockChanges = new HashMap<>();
+    private final Map<Vec3i, TrackedBlockChange> blockChanges = new HashMap<>();
     private int playhead = 0;
     private double extraFramesCounter = 0;
     private double speed = 1d;
@@ -165,6 +166,7 @@ public class ReplayPlayback implements IPlayback, Listener, PacketListener {
         Bukkit.getPluginManager().registerEvents(this, YukiReplay.getInstance());
         packetListenerHandle = PacketEvents.getAPI().getEventManager().registerListener(this, PacketListenerPriority.HIGH);
     }
+
 
     @Override
     public void AddViewers(Player... players) {
@@ -298,6 +300,14 @@ public class ReplayPlayback implements IPlayback, Listener, PacketListener {
 //        System.out.println("playhead: " + playhead);
         for (var instruction : frames.get(playhead)) {
             instruction.Apply(this);
+
+            if (instruction instanceof IBlockChange blockChange) {
+                var pos = blockChange.GetLocation();
+                if (!blockChanges.containsKey(pos)) {
+                    var block = pos.ToLocation(world).getBlock();
+                    blockChanges.put(pos, new TrackedBlockChange(pos, block.getType(), block.getData()));
+                }
+            }
         }
 
         TickEntities();
@@ -322,8 +332,18 @@ public class ReplayPlayback implements IPlayback, Listener, PacketListener {
     public void Restart() {
         EnsureValid();
         playhead = 1;
-        StepPlayback();
         playing = false;
+
+        ResetChangedBlocks();
+
+        StepPlayback();
+    }
+
+    private void ResetChangedBlocks() {
+        for (var trackedBlock : blockChanges.values()) {
+            var pos = trackedBlock.getLocation().ToLocation(world);
+            viewers.forEach(c -> c.sendBlockChange(pos, trackedBlock.getMaterial(), trackedBlock.getData()));
+        }
     }
 
     private void TickEntities() {
@@ -378,6 +398,17 @@ public class ReplayPlayback implements IPlayback, Listener, PacketListener {
 
         if (playhead >= frames.size()) {
             playing = false;
+        }
+    }
+
+    @Override
+    public void onPacketReceive(PacketReceiveEvent event) {
+        if (event.getPacketType() == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
+            var packet = new WrapperPlayClientPlayerBlockPlacement(event);
+            var pos = new Vec3i(packet.getBlockPosition());
+            if (blockChanges.containsKey(pos)) {
+                event.setCancelled(true);
+            }
         }
     }
 

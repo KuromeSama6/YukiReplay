@@ -21,6 +21,7 @@ import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.ThrownPotion;
+import org.bukkit.event.entity.PotionSplashEvent;
 import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.potion.Potion;
 
@@ -45,8 +46,6 @@ public class InstructionPotionSplash extends EntityInstruction {
         posX = pos.getX();
         posY = pos.getY();
         posZ = pos.getZ();
-
-        var potionMeta = (PotionMeta)potion.getItem().getItemMeta();
     }
 
     @Override

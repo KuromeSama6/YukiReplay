@@ -3,6 +3,7 @@ package moe.ku6.yukireplay.api.codec.impl;
 import moe.ku6.yukireplay.api.codec.Instruction;
 import moe.ku6.yukireplay.api.codec.InstructionType;
 import moe.ku6.yukireplay.api.playback.IPlayback;
+import moe.ku6.yukireplay.api.util.Vec3i;
 import org.bukkit.Location;
 
 import java.io.DataOutputStream;
@@ -24,6 +25,10 @@ public abstract class BlockInstruction extends Instruction {
         x = pos.getBlockX();
         y = pos.getBlockY();
         z = pos.getBlockZ();
+    }
+
+    public Vec3i GetLocation() {
+        return new Vec3i(x, y, z);
     }
 
     @Override
