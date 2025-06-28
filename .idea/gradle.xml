@@ -4,7 +4,7 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="$PROJECT_DIR$/../../opt/gradle-8.12.1" />
+        <option name="gradleJvm" value="21" />
       </GradleProjectSettings>
     </option>
   </component>
